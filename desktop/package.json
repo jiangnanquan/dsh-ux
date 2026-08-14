@@ -1,0 +1,15 @@
+{
+  "name": "dsh-desktop",
+  "version": "1.0.0",
+  "description": "dsh 无边框沉浸式桌面壳:双击启动脚本一键拉起 dsh web 后端 + Electron 窗口",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron main.js"
+  },
+  "keywords": ["dsh", "deepseek-harness", "electron", "desktop"],
+  "author": "jiangnanquan",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^43.4.0"
+  }
+}

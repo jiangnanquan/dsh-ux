@@ -1,0 +1,6 @@
+# dsh-enhance bundle for DeepSeek Harness (dsh).
+# `dsh plugin --profile <name> add dsh-enhance` 安装后,本 patch 自动把插件行
+# 插入 profile 组合;插件通过 profile 的 node_modules 按包名解析。
+- insert:
+    - id: dsh-enhance
+      name: 'dsh-enhance'
