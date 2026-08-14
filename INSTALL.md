@@ -32,9 +32,8 @@ dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
 ## 3. 机器验证(不依赖 UI)
 
 ```bash
-# 3.1 bundles 已自动写入(必须含 "dsh-enhance")
-grep -A5 '"dsh"' ~/.dsh/profiles/web/package.json | grep -i dsh-enhance \
-  || node -e 'const p=require(process.env.HOME+"/.dsh/profiles/web/package.json");console.log(p.dsh?.profile?.bundles)'
+# 3.1 bundles 已自动写入(输出必须含 dsh-enhance)
+node -e 'const p=require(process.env.HOME+"/.dsh/profiles/web/package.json");const b=p.dsh?.profile?.bundles||[];console.log(b.includes("dsh-enhance")?"bundles ✓":"bundles ✗ 缺失,回看第 2 步")'
 
 # 3.2 配置树已合成 dsh-enhance 行
 dsh --profile web --dump-config | grep -i "dsh-enhance"
