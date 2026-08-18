@@ -15,16 +15,40 @@ PIDFILE=/tmp/dsh-web.pid
 
 is_up() { curl -sf -o /dev/null --max-time 1 "$URL" 2>/dev/null; }
 
+# 优先用本地锁定的依赖（npm install 后秒开）；缺失时回退 npx（首次约 2 分钟）
+DSH_BIN="$DIR/node_modules/.bin/dsh"
+if [[ -x "$DSH_BIN" ]]; then
+  DSH_CMD="$DSH_BIN"
+else
+  echo "⚠️ 未找到本地依赖 node_modules/.bin/dsh，回退 npx（首次需下载，约 2 分钟）"
+  echo "   建议先执行：cd \"$DIR\" && npm install"
+  DSH_CMD=(npx --yes @deepseek-ai/dsh)
+fi
+
+stop_backend() {
+  local pid
+  pid=$(cat "$PIDFILE" 2>/dev/null)
+  [[ -n "$pid" ]] && kill "$pid" 2>/dev/null
+  pkill -f "dsh web --port $PORT" 2>/dev/null
+  pkill -f "@deepseek-ai/dsh.*web --port $PORT" 2>/dev/null
+}
+
 if is_up; then
   echo "✅ dsh 已在运行：$URL（直接复用）"
   DSH_PID=""
 else
   echo "⏳ 启动 dsh web 后端…"
-  (npx --yes @deepseek-ai/dsh web --port "$PORT" >"$LOG" 2>&1 & echo $! > "$PIDFILE")
-  for i in {1..40}; do is_up && break; sleep 0.5; done
+  if [[ -x "$DSH_BIN" ]]; then
+    "$DSH_BIN" web --port "$PORT" >"$LOG" 2>&1 &
+  else
+    "${DSH_CMD[@]}" web --port "$PORT" >"$LOG" 2>&1 &
+  fi
+  echo $! > "$PIDFILE"
+  for i in {1..300}; do is_up && break; sleep 0.5; done
   if ! is_up; then
-    echo "❌ dsh 启动失败，最近日志："
-    tail -15 "$LOG"
+    echo "❌ dsh 启动失败（等待 150 秒超时），最近日志："
+    [[ -s "$LOG" ]] && tail -15 "$LOG" || echo "（日志为空——npx 可能仍在下载安装中）"
+    stop_backend
     exit 1
   fi
   echo "✅ dsh 就绪：$URL"
@@ -39,8 +63,7 @@ RC=$?
 if [[ -n "$DSH_PID" ]]; then
   kill "$DSH_PID" 2>/dev/null
   sleep 1
-  pkill -f "@deepseek-ai/dsh.*--port $PORT" 2>/dev/null
-  pkill -f "dsh web --port $PORT" 2>/dev/null
+  stop_backend
   echo "🛑 已停止本次启动的 dsh 后端"
 fi
 

@@ -6,10 +6,18 @@
   "scripts": {
     "start": "electron main.js"
   },
-  "keywords": ["dsh", "deepseek-harness", "electron", "desktop"],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "electron",
+    "desktop"
+  ],
   "author": "jiangnanquan",
   "license": "MIT",
   "devDependencies": {
     "electron": "^43.4.0"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.1.0-rc.7"
   }
 }
