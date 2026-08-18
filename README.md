@@ -18,6 +18,10 @@ DSH(DeepSeek Harness)Web 界面体验套件,包含两件东西:
 | 折叠胶囊 | 思考块聚合为 `Think ×N` 胶囊、工具调用聚合为 `A → B → C` 链路胶囊；长链路按可用宽度换行，每行独立成胶囊，点击任一行展开 |
 | 账户用量 | 底部显示官方账户余额、本轮 token 成本、近 30 天用量图表 |
 
+长工具链会跟随消息列宽度自动重新分行，每个视觉行保持独立、完整的胶囊轮廓：
+
+![工具链换行后每行独立胶囊](docs/images/tool-chain-multiline-capsules.png)
+
 ## 安装
 
 前置:已按 DSH 的 profile 机制运行(`dsh web`)。
