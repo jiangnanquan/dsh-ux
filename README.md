@@ -1,5 +1,7 @@
 # dsh-ux
 
+[![Listed on DSH Directory](https://dsh.directory/badges/listed.svg)](https://dsh.directory/plugins/jiangnanquan/dsh-ux)
+
 **中文** | [English](README_EN.md)
 
 DSH(DeepSeek Harness)Web 界面体验套件,包含两件东西:

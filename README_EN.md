@@ -1,5 +1,7 @@
 # dsh-ux
 
+[![Listed on DSH Directory](https://dsh.directory/badges/listed.svg)](https://dsh.directory/plugins/jiangnanquan/dsh-ux)
+
 [中文](README.md) | **English**
 
 A UI enhancement suite for DeepSeek Harness (DSH) Web, consisting of two parts:
