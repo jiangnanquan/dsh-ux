@@ -234,9 +234,10 @@ async function createWindow() {
     if (httpCode === 401) showAuthHint(win)
   })
   win.webContents.on('did-finish-load', () => {
-    if (win.__dshAuthHint === true) return
-    win.webContents.executeJavaScript(OVERLAY_JS, true)
-    // 调试快照：DSH_SNAPSHOT=/tmp/x.png 时保存窗口截图后退出
+    if (win.__dshAuthHint !== true) win.webContents.executeJavaScript(OVERLAY_JS, true)
+    // 调试快照：DSH_SNAPSHOT=/tmp/x.png 时保存窗口截图后退出。
+    // 认证失败页也要能截到：早期实现在这里直接 return，导致需要看认证提示时
+    // 调试模式反而不退出也不出图，排查现场时只能干等。
     if (SNAPSHOT !== '') {
       setTimeout(() => {
         win.webContents.capturePage().then((img) => {

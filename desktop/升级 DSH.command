@@ -40,7 +40,11 @@ if [[ "$LOCAL_DSH" == "$LATEST_DSH" && "$LOCAL_EL" == "$LATEST_EL" ]]; then
   exit 0
 fi
 
-if curl -sf -o /dev/null --max-time 1 "$URL" 2>/dev/null; then
+# 0.1.5 起无 cookie 的探测请求会拿到 401（curl -f 视其为失败），
+# 用 -f 判断会把「正在运行」误判成「未运行」，于是丢掉重启提示。
+# 只要能拿到任何 HTTP 状态码就算在运行。
+http_status() { curl -s -o /dev/null -w '%{http_code}' --max-time 1 "$URL" 2>/dev/null }
+if [[ "$(http_status)" == [1-5][0-9][0-9] ]]; then
   echo "⚠️ 检测到 dsh 正在运行（$URL），升级完成后请重启 dsh 使新版本生效"
 fi
 
