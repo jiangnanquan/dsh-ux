@@ -1,6 +1,6 @@
 {
   "name": "dsh-enhance",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "DSH web 界面增强：Solarized 浅色主题 + Maple Mono 字体、紧凑对话布局、思考/工具链折叠胶囊、官方余额 + 本轮成本 + 用量图表",
   "type": "module",
   "main": "lib/index.js",
@@ -26,8 +26,7 @@
   ],
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
-    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-theme": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh-client-ui-theme": "^0.1.0-rc.6 || ^0.2.0-rc.2"
   },
   "dsh": {
     "bundle": {
@@ -36,7 +35,6 @@
     "client": {
       "platform": "web",
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-ui-theme"
       ]
     }

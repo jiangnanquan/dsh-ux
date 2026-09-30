@@ -8,8 +8,8 @@ A UI enhancement suite for DeepSeek Harness (DSH) Web, consisting of two parts:
 
 | Component | Description |
 |-----------|-------------|
-| **dsh-enhance** (repository root) | DSH Web plugin for theming, layout, collapsible capsules, and usage information |
-| **dsh-desktop** (`desktop/`) | Frameless Electron desktop shell with one-click startup |
+| **dsh-enhance** (repository root) | DSH plugin for theming, layout, collapsible capsules, and usage information; installs into both the web profile and the official desktop app |
+| ~~**dsh-desktop** (`desktop/`)~~ | ~~Frameless Electron desktop shell~~ **Deprecated**: the official desktop app ships its own shell |
 
 ![dsh-enhance](screenshot.png)
 
@@ -36,17 +36,19 @@ dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
 
 The package declares both `dsh.bundle.patch` and `dsh.client`. `dsh plugin add` automatically adds the plugin to the profile bundle list. **Restart DSH to activate it**; no manual configuration edits are required. Running the installation command again is safe and idempotent. To update, run `dsh plugin --profile web update dsh-enhance`.
 
+> **The official desktop app does not use this command**: the `desktop` profile is owned exclusively by the Electron application and `dsh plugin --profile desktop …` is rejected outright. See [INSTALL.md](INSTALL.md) for the desktop path.
+
 ## Hand It to Your AI Agent
 
 If you prefer not to run the commands manually, paste the following prompt into any AI coding agent (Claude Code, DSH, Gemini CLI, and others) and ask it to follow `INSTALL.md`:
 
 > Follow the instructions in https://github.com/jiangnanquan/dsh-ux/blob/main/INSTALL.md to install and verify the dsh-enhance plugin on my machine using the web profile. Run the documented health checks and report the results. If any step fails, follow the rollback instructions and explain the cause.
 
-## Desktop Shell (dsh-desktop)
+## Desktop App (dsh-desktop)
 
-The macOS frameless desktop shell presents DSH Web as a desktop application. Double-click `启动 DSH.command` to start the backend and open the window; on exit, it stops only the backend process that it started. The shell supports the `DSH_URL` and `DSH_SNAPSHOT` environment variables.
+The official desktop app bundles its own dsh runtime and Electron shell (`@deepseek-ai/dsh-desktop-host`) and uses a dedicated `desktop` profile (`~/.dsh/profiles/desktop`, listening on `127.0.0.1:19387`). Installing there differs from the web profile; see [INSTALL.md](INSTALL.md).
 
-See [desktop/README.md](desktop/README.md) for details (Chinese).
+> **The `desktop/` directory in this repository (the lightweight dsh-desktop wrapper) is deprecated.** The official shell already covers everything it did — frameless window, backend startup, authentication. It no longer needs to be installed and is kept for historical reference only.
 
 ## Requirements and Notes (dsh-enhance)
 

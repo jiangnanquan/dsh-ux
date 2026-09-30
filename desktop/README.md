@@ -1,5 +1,13 @@
 # dsh-desktop
 
+> ## ⚠️ 已废弃(Deprecated)
+>
+> **不要再安装这一层。** 官方桌面版(`/Applications/DeepSeek Harness.app`)已经自带 dsh 运行时与 Electron 壳(`@deepseek-ai/dsh-desktop-host`),本目录做的一切——无边框窗口、拉起后端、认证打通——它都覆盖了,而且不需要你自己维护 Electron 与 dsh 的版本锁定。
+>
+> - **装插件到官方桌面版**:见仓库根目录 [INSTALL.md](../INSTALL.md) 的 §2b(注意 `desktop` profile 由应用独占,`dsh plugin --profile desktop …` 会被拒绝)。
+> - **本目录保留原因**:历史参考。`node_modules/` 未被版本控制,可随时删除。
+> - **已知失效点**:`package.json` 里锁的 `@deepseek-ai/dsh@0.1.5-rc.1` 已是旧版本;dsh 0.2.0 起 `dsh-client-runtime` 等包已不存在,按下面的方式跑起来也不会与新版 dsh 对齐。
+
 dsh(DeepSeek Harness)的无边框沉浸式桌面壳:把 dsh web 前端装进一个无边框 Electron 窗口,自带悬浮窗口控制。
 
 ## 特性

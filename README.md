@@ -8,8 +8,8 @@ DSH(DeepSeek Harness)Web 界面体验套件,包含两件东西:
 
 | 部分 | 内容 |
 |------|------|
-| **dsh-enhance**(仓库根目录) | DSH web 插件:主题、布局、折叠胶囊、账户用量 |
-| **dsh-desktop**(`desktop/` 子目录) | 无边框 Electron 桌面壳,双击即用 |
+| **dsh-enhance**(仓库根目录) | DSH 插件:主题、布局、折叠胶囊、账户用量。web profile 与官方桌面版都能装 |
+| ~~**dsh-desktop**(`desktop/` 子目录)~~ | ~~无边框 Electron 桌面壳~~ **已废弃**:官方桌面版自带壳,不再需要 |
 
 ![dsh-enhance](screenshot.png)
 
@@ -36,17 +36,19 @@ dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
 
 本包声明了 `dsh.bundle.patch` 与 `dsh.client`,`dsh plugin add` 会自动把它加入 profile 的 bundles,**重启 dsh 后即生效**,无需手改任何配置。重复执行该命令是安全的(幂等);升级用 `dsh plugin --profile web update dsh-enhance`。
 
+> **官方桌面版不使用这条命令**:`desktop` profile 由 Electron 应用独占,`dsh plugin --profile desktop …` 会被直接拒绝。桌面版装法见 [INSTALL.md](INSTALL.md#桌面版dsh-desktop安装)。
+
 ## 交给你的 AI
 
 不想手动敲命令?把下面这段话粘贴给任意 AI agent(Claude Code、dsh、Gemini CLI……),让它读 INSTALL.md 并完成安装与自检:
 
 > 请按照 https://github.com/jiangnanquan/dsh-ux/blob/main/INSTALL.md 里的步骤,在我的机器上安装并验证 dsh-enhance 插件(profile 用 web),然后运行文档里的健康检查并告诉我结果。如果任何一步失败,按文档的回滚步骤恢复原状并说明原因。
 
-## 桌面壳(dsh-desktop)
+## 桌面版(dsh-desktop)
 
-macOS 无边框沉浸式窗口,把 dsh web 装进桌面应用形态:双击 `启动 DSH.command` 自动拉起后端 + 窗口,退出时只清理自己拉起的后端。支持 `DSH_URL` / `DSH_SNAPSHOT` 环境变量。
+官方桌面版自带 dsh 运行时与 Electron 壳(`@deepseek-ai/dsh-desktop-host`),它使用独立的 `desktop` profile(`~/.dsh/profiles/desktop`,固定监听 `127.0.0.1:19387`)。装法与 web profile 不同,见 [INSTALL.md](INSTALL.md#桌面版dsh-desktop安装)。
 
-见 [desktop/README.md](desktop/README.md)。
+> **本仓库的 `desktop/` 子目录(dsh-desktop 轻量封装)已废弃**:官方壳已经覆盖了它做的一切(无边框窗口、拉起后端、认证打通),不再需要安装。保留仅为历史参考,见 [desktop/README.md](desktop/README.md)。
 
 ## 依赖与前提(dsh-enhance)
 
