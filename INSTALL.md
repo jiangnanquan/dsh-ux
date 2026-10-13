@@ -117,17 +117,54 @@ rm -rf "$CHECK"   # 只删刚复制出来的临时 profile
 
 ```bash
 # web:端口以你 dsh web 实际监听为准(默认 3080)
-curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3080/enh/balance
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3080/enh/ping
+curl -s http://127.0.0.1:3080/enh/ping   # 期望 {"ok":true,"build":"<package.json 版本>",...}
 
 # 桌面版:固定 19387
-curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:19387/enh/balance
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:19387/enh/ping
 ```
 
-- 返回 `200`(JSON)= host 半正常且凭据有效;
-- 返回 `4xx/5xx` 的 JSON 错误体 = host 半已加载但凭据未配置或 API 失败(见第 1.3 条);
-- 返回 `404` = host 半未加载,回到第 2 步排查。
+- `/enh/ping` 返回 `200` = **宿主半已加载**,`build` 就是当前进程里的宿主半版本;设置页拿它跟
+  客户端半的 `CLIENT_BUILD` 比对,不一致就在页面顶部提示「重启 DeepSeek Harness 后生效」。
+- 返回 `404` = 宿主半未加载(或仍是 1.1.0 及更早的版本,那时还没有这条路由),回到第 2 步排查;
+  只在**插件刚装/刚更新**时需要重启,平时开关功能不需要。
+- 余额能不能查还要看凭据:
 
-浏览器控制台 `[dsh-enhance-diag]` 日志应无红色报错(静置时 scan/rebuild 计数为 0)。
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3080/enh/balance
+```
+
+  - 返回 `200`(JSON)= 凭据有效;
+  - 返回 `4xx/5xx` 的 JSON 错误体 = host 半已加载但凭据未配置或 API 失败(见第 1.3 条);
+  - 返回 `404` = host 半未加载。
+
+浏览器控制台 `[dsh-enhance-diag]` 日志应无红色报错(静置时 scan/rebuild 计数为 0;把
+设置 → 界面增强 → 诊断日志关掉即可不再打印)。
+
+### 4b. 开关自检(打开设置 → 界面增强)
+
+- 顶部状态行:构建号一致 → 「宿主半已同步」;不一致或 404 → 黄条提示重启,带「重新检测」。
+- 每个开关拨一下应**立即**生效,不需要重启:配色/布局是 CSS 闸门,字体方案与字重只改
+  `<html data-dsh-ux-font>` / `data-dsh-ux-fontweight>`,折叠胶囊会即时注入或收回 DOM 节点,
+  余额那一行会即时出现或消失。
+- **字体方案**:页面上会列出本机探测结果(装了 ✓ / 没装 ✗),未装的方案置灰。切到某一档后,
+  下方的「对齐自检块」里第 1 行(40 个半角字符)与第 2 行(20 个汉字)必须等宽、方框必须是矩形;
+  对不齐就说明该字族不是 0.5 窄体(见下一条)。选 Mono/Term 的差别看第 3 行(歧义字符):
+  Mono 下与第 1 行等宽,Term 下只有一半。
+- 关掉总开关应回到官方外观;再打开时各分项保持原样(状态存在 cookie:键名 `dsh-enhance-config`)。
+- 不想点 UI 也可直接看 `<html>` 上的 `data-dsh-ux` / `data-dsh-ux-<键>` 属性是否随之翻转。
+
+### 4c. 机器自检(不需要启动 dsh,纯 Node)
+
+```bash
+node test/smoke.mjs
+```
+
+覆盖:客户端半的开关状态机(属性/cookie 往返、枚举归一化)、每条 CSS 闸门是否存在、字体方案的
+家族栈与字重变量、字体探测与「未装即置灰」、对齐自检块的列宽不变量、注册进哪个插槽(必须是
+`settings.section` 而不是 `settings.general.item`)、宿主半的四条路由、首帧注入脚本与客户端半的口径
+(含字体枚举的白名单校验)、以及设置页顶部那条「要不要重启」的探测逻辑。装完/改完插件跑一遍,
+25 项应全绿。
 
 ## 5. 回滚
 
@@ -152,8 +189,30 @@ ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" \
 
 ## 6. 已知边界(agent 判断用)
 
+- **开关状态存 cookie**:`dsh-enhance-config`(URL-encoded JSON,含 `master` + 各分项布尔值 + 两个枚举
+  `font` / `fontweight`)。宿主半在 index 注入的首帧脚本读它、在任何渲染前把状态写到 `<html data-dsh-ux-*>`
+  上;客户端半改开关时写同一批属性并回写 cookie。**布尔属性的语义是「总开关 && 分项」的合取**,所以分项
+  原始选择只在 cookie 里 —— 定位「开关不生效」时先看属性对不对,再看 cookie 内容;删掉 cookie 等于回到
+  默认(布尔全开、字体方案 auto、字重 regular)。旧版单键 `dsh-enhance-theme=off` 与旧版布尔
+  `font: true/false` 都仍被识别,并在下一次写入时收敛成枚举值。
+- **字体方案是枚举,不是布尔**:`data-dsh-ux-font` ∈ `off | auto | sans-mono | sans-term | noto | maple`,
+  `data-dsh-ux-fontweight` ∈ `regular | semibold`。**这两组白名单在 `lib/index.js`(首帧脚本)和
+  `lib/client.js`(state 归一化)各有一份,必须同集合** —— 加方案时两处一起改,`test/smoke.mjs` 里有一条
+  用例专门盯这个。越界值一律回落默认(auto/regular),不会把变量写坏。
+- **字体族名与探测**:方案候选族名写死在 `FONT_SCHEMES`(如 `"Sarasa Mono SC"`)。探测用 canvas 量宽度、
+  以「明确不存在的族名 + monospace」当基线比对(`familyInstalled`),拉丁与汉字各探一次取或 —— 这比拿
+  monospace/serif 当基线稳(Menlo 与 Maple Mono 的拉丁宽都是 0.6,容易误判)。**若某台机器上 CoreText 暴露的
+  族名不同**(更纱 SuperTTC 的族名随发布方式变化,单字重 TTF 可能叫 `Sarasa Term SC SemiBold`),
+  页面会显示「未安装」,此时把族名加进 `FONT_SCHEMES[].families` 即可 —— 不要靠猜。
+- **0.5 规则是硬指标**:方案的家族栈里只放西文 0.5 的 CJK 等宽字体(更纱 Iosevka / Noto Sans Mono CJK)。
+  加入西文 0.6 的字族(如 Maple Mono)会把汉字撑到 1.2,页面上的对齐自检块立刻能看出方框歪斜 ——
+  这属于**预期内的现象**,不是渲染 bug。
+- **插件本体更新需要重启**:客户端半(`lib/client.js`)随页面刷新/客户端热重载换新,宿主半
+  (`lib/index.js`:4 条 `/enh/*` 路由 + 首帧注入脚本)由 dsh 进程启动时加载、无法热更新。两半构建号
+  不一致时设置页会提示重启 —— 这是设计内的行为,不是缺陷。校验方式:`/enh/ping` 的 `build` 字段 vs
+  `lib/client.js` 里的 `CLIENT_BUILD` vs `package.json.version`,三者必须相同(升版时一起改)。
 - **计价表硬编码**:`lib/index.js` 的 `pricingFor` 按官方峰谷价(北京时间 9–12、14–18 高峰,其余半价;2026-08-17 起新价)写死,官方调价后需人工更新——AI 不可自行假设当前价格仍准确。
-- **DOM 依赖**:折叠胶囊依赖 `data-chat-flow`、`data-tool`、`data-variant="think"` 等属性名,DSH 升级若改这些属性,折叠功能静默失效但不影响其余功能。
+- **DOM 依赖**:折叠胶囊 0.1.x 依赖 `data-chat-flow`、`data-tool`、`data-variant="think"` 等属性名；0.2.0 依赖官方过程分组契约 `data-step-process-content` / `data-chat-group-key` / `data-chat-turn` / `data-chat-flow-kind="turn-process"`（挂载点只认 `data-*`，不绑 CSS Module 哈希类名）。DSH 升级若改这些属性，折叠功能会自禁用并回落到不影响其余功能的空转状态。
 - **凭据**:API key 通过 `credentials.resolve("DEEPSEEK_API_KEY")` 运行时解析,本插件从不读取/存储 key 文件。
 - **余额接口的根**:`resolveBaseURL` 读 `llm-deepseek` 当前生效的 `baseURL`,再剥掉 `/anthropic`、`/anthropic/v1`、`/v1` 等接口后缀得到接口根(余额在 OpenAI 兼容根的 `/user/balance` 上)。两代 settings 服务形状不同——0.1.x 走 `settings.get(section)`,0.2.0 走 `settings.describe()` 的 volatile 表单投影(该字段恰好声明为 volatile);两条路都取不到时回落 `https://api.deepseek.com`。若用户把对话端点指向不带这些后缀的自建路径,余额接口会被拼到错误的根上。
 - **peer 版本闸门**:dsh 在加载 bundle 前校验 `@deepseek-ai/dsh-*` 的 `peerDependencies`(含 prerelease),不满足的 bundle 会被**跳过并记入 `skippedBundles`**——装上了也不加载。当前范围是 `^0.1.0-rc.6 || ^0.2.0-rc.2`,dsh 0.3 起需要重新适配。
