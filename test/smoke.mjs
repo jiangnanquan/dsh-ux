@@ -192,55 +192,92 @@ test('客户端半导出 apply/inject，构建号与 package.json 一致', () =>
   assert.ok(hostBuild, '宿主半应从 package.json 读构建号')
 })
 
-test('缺省状态：无属性时布尔全开、字体方案 auto、字重 regular', () => {
+test('缺省状态：无属性时布尔全开、主题 Solarized、字体 auto、字重半粗、墨色深墨', () => {
   const state = withDom(client, createDom(), {}, () => internals.readStateFromDom())
   for (const key of internals.BOOL_KEYS) assert.equal(state[key], true, key + ' 应默认开')
   assert.equal(state.master, true)
+  assert.equal(state.theme, 'solarized-light')
   assert.equal(state.font, 'auto')
-  assert.equal(state.fontweight, 'regular')
+  assert.equal(state.fontweight, 'semibold', '默认要落在带「推荐」徽标的半粗')
+  assert.equal(state.ink, 'deep', '默认要落在带「推荐」徽标的深墨')
+  assert.equal(state.diag, undefined, '诊断日志不再是用户开关')
 })
 
-test('状态 → html 属性：布尔是合取，字体方案是枚举', () => {
+test('状态 → html 属性：布尔是合取，主题/字体/墨色是枚举', () => {
   const dom = createDom()
   withDom(client, dom, {}, () => {
-    internals.applyStateToDom({ master: true, theme: false, font: 'sans-term', fontweight: 'semibold', layout: true, fold: true, usage: true, diag: true })
+    internals.applyStateToDom({ master: true, theme: 'tokyo-night', font: 'sans-term', fontweight: 'semibold', ink: 'deep', layout: true, fold: true, usage: true, diag: true })
     assert.equal(dom.attributes.get('data-dsh-ux'), 'on')
-    assert.equal(dom.attributes.get('data-dsh-ux-theme'), 'off')
+    assert.equal(dom.attributes.get('data-dsh-ux-theme'), 'tokyo-night')
+    assert.equal(dom.attributes.get('data-dsh-ux-theme-tone'), 'dark')
     assert.equal(dom.attributes.get('data-dsh-ux-usage'), 'on')
     assert.equal(dom.attributes.get('data-dsh-ux-font'), 'sans-term')
     assert.equal(dom.attributes.get('data-dsh-ux-fontweight'), 'semibold')
+    assert.equal(dom.attributes.get('data-dsh-ux-ink'), 'deep')
 
-    // 总开关关掉：布尔全 off、font 也写 off（字体层随之撤下），字重留原值供恢复
-    internals.applyStateToDom({ master: false, theme: true, font: 'sans-term', fontweight: 'semibold', layout: true, fold: true, usage: true, diag: true })
+    // 总开关关掉：布尔全 off、theme/font 也写 off（两层随之撤下），字重/墨色留原值供恢复
+    internals.applyStateToDom({ master: false, theme: 'tokyo-night', font: 'sans-term', fontweight: 'semibold', ink: 'black', layout: true, fold: true, usage: true, diag: true })
     assert.equal(dom.attributes.get('data-dsh-ux'), 'off')
     for (const key of internals.BOOL_KEYS) assert.equal(dom.attributes.get('data-dsh-ux-' + key), 'off', key)
+    assert.equal(dom.attributes.get('data-dsh-ux-theme'), 'off')
+    assert.equal(dom.attributes.get('data-dsh-ux-theme-tone'), 'auto')
     assert.equal(dom.attributes.get('data-dsh-ux-font'), 'off')
     assert.equal(dom.attributes.get('data-dsh-ux-fontweight'), 'semibold')
+    assert.equal(dom.attributes.get('data-dsh-ux-ink'), 'black')
 
     internals.clearStateFromDom()
     assert.equal(dom.attributes.get('data-dsh-ux'), undefined)
+    assert.equal(dom.attributes.get('data-dsh-ux-theme'), undefined)
+    assert.equal(dom.attributes.get('data-dsh-ux-theme-tone'), undefined)
     assert.equal(dom.attributes.get('data-dsh-ux-font'), undefined)
     assert.equal(dom.attributes.get('data-dsh-ux-fontweight'), undefined)
+    assert.equal(dom.attributes.get('data-dsh-ux-ink'), undefined)
+
+    // 旧属性值 "on"（老宿主半尚未重启）不应被当成合法主题
+    internals.applyStateToDom({ master: true, theme: 'on', font: 'auto', fontweight: 'regular', ink: 'theme', layout: true, fold: true, usage: true, diag: true })
+    assert.equal(dom.attributes.get('data-dsh-ux-theme'), 'off')
   })
 })
 
 test('cookie 往返：枚举/布尔都幂等，越界值与坏 JSON 回落缺省', () => {
-  const state = { master: true, theme: false, font: 'sans-mono', fontweight: 'semibold', layout: false, fold: true, usage: false, diag: true }
+  const state = { master: true, theme: false, font: 'sans-mono', fontweight: 'semibold', ink: 'deep', layout: false, fold: true, usage: false, diag: true }
   assert.deepEqual(internals.parseState(internals.serializeState(state)), internals.normalizeState(state))
   assert.deepEqual(internals.parseState('not-json'), null)
   assert.deepEqual(internals.parseState(''), null)
   assert.deepEqual(internals.parseState(encodeURIComponent(JSON.stringify({ theme: 'yes', ghost: 1 }))), internals.DEFAULT_STATE)
 })
 
-test('归一化：越界的字体方案/字重被丢弃；旧版布尔 font 映射回 auto/off', () => {
+test('归一化：越界的主题/字体/字重/墨色被丢弃；旧版布尔 theme/font 映射回默认/off', () => {
   const n = internals.normalizeState
   assert.equal(n({ font: 'comic-sans' }).font, 'auto', '越界方案回落 auto')
   assert.equal(n({ font: 'off' }).font, 'off')
   assert.equal(n({ font: true }).font, 'auto', '旧版 font=true → auto')
   assert.equal(n({ font: false }).font, 'off', '旧版 font=false → off')
-  assert.equal(n({ fontweight: 'black' }).fontweight, 'regular')
+  assert.equal(n({ fontweight: 'black' }).fontweight, 'semibold')
   assert.equal(n({ fontweight: 'semibold' }).fontweight, 'semibold')
+  assert.equal(n({ ink: 'neon' }).ink, 'deep', '越界墨色回落默认（深墨）')
+  assert.equal(n({ ink: 'black' }).ink, 'black')
+  assert.equal(n({ theme: 'neon' }).theme, 'solarized-light', '越界主题回落默认')
+  assert.equal(n({ theme: true }).theme, 'solarized-light', '旧版 theme=true → 默认主题')
+  assert.equal(n({ theme: false }).theme, 'off', '旧版 theme=false → 官方配色')
+  assert.equal(n({ theme: 'kanagawa-wave' }).theme, 'kanagawa-wave')
   assert.equal(n(null).font, 'auto')
+})
+
+test('v1→v2 一次性迁移：旧默认（跟随配色 + 标准）抬到推荐档，写完 rev 后不再改写', () => {
+  const n = internals.normalizeState
+  const legacy = n({ master: true, theme: 'solarized-light', fontweight: 'regular', ink: 'theme' })
+  assert.equal(legacy.fontweight, 'semibold', '旧默认字重要抬到半粗')
+  assert.equal(legacy.ink, 'deep', '旧默认墨色要抬到深墨')
+  assert.equal(legacy.rev, 2)
+
+  const migrated = n({ rev: 2, fontweight: 'regular', ink: 'theme' })
+  assert.equal(migrated.fontweight, 'regular', 'rev=2 后显式选择标准要保留')
+  assert.equal(migrated.ink, 'theme', 'rev=2 后显式选择跟随配色要保留')
+
+  const partial = n({ rev: 2, ink: 'black' })
+  assert.equal(partial.ink, 'black')
+  assert.equal(partial.fontweight, 'semibold', '没写的键仍取推荐默认')
 })
 
 test('初始状态以 cookie 为准：总开关关过一轮，分项选择不能在重载后丢失', () => {
@@ -259,7 +296,7 @@ test('初始状态以 cookie 为准：总开关关过一轮，分项选择不能
   const legacyDom = createDom()
   legacyDom.document.documentElement.setAttribute('data-dsh-ux-theme', 'off')
   const legacy = withDom(client, legacyDom, {}, () => internals.initialState())
-  assert.equal(legacy.theme, false)
+  assert.equal(legacy.theme, 'off')
   assert.equal(legacy.master, true)
   assert.equal(legacy.fold, true)
 })
@@ -271,13 +308,18 @@ test('store.set 同时改写 html 属性和 cookie（即时开关的两条腿）
     let notified = 0
     const off = store.subscribe(() => { notified += 1 })
 
-    store.set('theme', false)
+    store.set('theme', 'off')
     assert.equal(dom.attributes.get('data-dsh-ux-theme'), 'off')
     assert.ok(dom.cookieLog.some((entry) => entry.startsWith('dsh-enhance-config=')), '应写入配置 cookie')
     assert.ok(dom.cookieLog.some((entry) => entry.startsWith('dsh-enhance-theme=;')), '应清掉旧版 cookie')
-    assert.equal(store.effective('theme'), false)
-    assert.equal(store.get().theme, false)
+    assert.equal(store.get().theme, 'off')
     assert.equal(notified, 1, '一次 set 只通知一次')
+
+    // 主题是枚举：切换立即改属性与 tone
+    store.set('theme', 'kanagawa-wave')
+    assert.equal(dom.attributes.get('data-dsh-ux-theme'), 'kanagawa-wave')
+    assert.equal(dom.attributes.get('data-dsh-ux-theme-tone'), 'dark')
+    assert.equal(store.get().theme, 'kanagawa-wave')
 
     // 字体方案是枚举：set 立刻改属性，且 fontEnabled() 跟着变
     store.set('font', 'sans-mono')
@@ -296,18 +338,18 @@ test('store.set 同时改写 html 属性和 cookie（即时开关的两条腿）
 
     // 同一个值重复写不再通知
     store.set('master', false)
-    assert.equal(notified, 4)
+    assert.equal(notified, 5)
 
     store.setAll()
-    assert.equal(store.get().theme, true)
+    assert.equal(store.get().theme, 'solarized-light')
     assert.equal(store.get().font, 'auto', '恢复默认要把字体方案也带回 auto')
     assert.equal(dom.attributes.get('data-dsh-ux'), 'on')
     assert.equal(dom.attributes.get('data-dsh-ux-font'), 'auto')
-    assert.equal(notified, 5)
+    assert.equal(notified, 6)
 
     off()
     store.set('diag', false)
-    assert.equal(notified, 5, '取消订阅后不再收到通知')
+    assert.equal(notified, 6, '取消订阅后不再收到通知')
   })
 })
 
@@ -325,7 +367,6 @@ function collectStyleText(options = {}) {
 test('CSS：每个布尔功能块都挂在闸门上，且闸门键与 BOOL_KEYS 一一对应', () => {
   const styles = collectStyleText()
   for (const key of internals.BOOL_KEYS) {
-    if (key === 'diag') continue // 诊断日志只影响 console，没有常驻 CSS
     assert.ok(styles.includes('html[data-dsh-ux-' + key + '="on"]'), '缺少闸门: ' + key)
   }
   // 旧的无闸门选择器不许残留
@@ -333,9 +374,84 @@ test('CSS：每个布尔功能块都挂在闸门上，且闸门键与 BOOL_KEYS 
   assert.ok(!/^\s*html, body \{/m.test(styles), '仍有未加闸门的 html, body 规则')
   assert.ok(!/^\s*\[data-chat-flow\] >/m.test(styles), '仍有未加闸门的折叠规则')
   assert.ok(styles.includes('html[data-dsh-ux-fold="on"] [data-chat-flow]:not([data-step-process-content]) > [data-chat-flow-kind="tool-call"]'), '折叠闸门必须收窄到 0.1.x 扁平流，不碰官方过程分组')
-  assert.ok(styles.includes('html[data-dsh-ux-theme="on"] body:not([data-ds-dark-theme])'))
+  assert.ok(styles.includes('html[data-dsh-ux="on"][data-dsh-ux-theme="solarized-light"] body'))
   assert.ok(styles.includes('html[data-dsh-ux-layout="on"] [data-content-phase="hero"] [data-composer-card]'))
   assert.ok(styles.includes('html[data-dsh-ux-usage="on"] [data-slot="conversation.composer.dock"]'))
+})
+
+test('CSS：每套非官方主题都有 token 块与 tone，官方配色不写覆盖', () => {
+  const styles = collectStyleText()
+  for (const theme of internals.THEMES) {
+    if (theme.key === 'off') continue
+    assert.ok(
+      styles.includes('html[data-dsh-ux="on"][data-dsh-ux-theme="' + theme.key + '"] body'),
+      '缺少主题块: ' + theme.key,
+    )
+    assert.ok(
+      styles.includes('html[data-dsh-ux="on"][data-dsh-ux-theme="' + theme.key + '"] { color-scheme: ' + theme.tone + '; }'),
+      '缺少 color-scheme: ' + theme.key,
+    )
+  }
+  assert.ok(!styles.includes('data-dsh-ux-theme="off"]'), '官方配色不应留下任何覆盖规则')
+  assert.equal((styles.match(/\{/g) || []).length, (styles.match(/\}/g) || []).length, '生成的 CSS 花括号必须配对')
+  // 生成的主题必须覆盖五级文字与关键 surface token
+  for (const token of ['--dsw-alias-bg-base', '--dsw-alias-label-primary', '--dsw-alias-label-tertiary', '--dsw-alias-brand-primary']) {
+    assert.ok(styles.includes(token), '主题 CSS 缺少 token: ' + token)
+  }
+})
+
+test('配色主题：正文在底色与 layer-1 上达到 AA（Solarized 沿用既有观感，由墨色档位兜底）', () => {
+  const rgb = (hex) => {
+    const n = parseInt(hex.slice(1), 16)
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+  }
+  const lum = (hex) => {
+    const [r, g, b] = rgb(hex).map((v) => {
+      const s = v / 255
+      return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const contrast = (a, b) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x)
+    return (hi + 0.05) / (lo + 0.05)
+  }
+  const bad = []
+  for (const theme of internals.THEMES) {
+    if (theme.key === 'off' || theme.key === 'solarized-light') continue
+    const t = internals.themeTokens(theme)
+    const bg = t['--dsw-alias-bg-base']
+    const bg1 = t['--dsw-alias-bg-layer-1']
+    const fg = t['--dsw-alias-label-primary']
+    const c1 = contrast(fg, bg)
+    const c2 = contrast(fg, bg1)
+    if (c1 < 4.5 || c2 < 4.5) bad.push(theme.key + ' bg=' + c1.toFixed(2) + ' bg1=' + c2.toFixed(2))
+  }
+  assert.deepEqual(bad, [], '以下主题正文对比度不达标: ' + bad.join('; '))
+})
+
+test('主题命名统一为「English · 中文」', () => {
+  for (const theme of internals.THEMES) {
+    assert.ok(
+      /^[^\u4e00-\u9fa5]+ · [\u4e00-\u9fa5]/.test(theme.label),
+      theme.key + ' 命名不符合 English · 中文：' + theme.label,
+    )
+  }
+  assert.equal(internals.FONT_SCHEMES.find((s) => s.key === 'off').label, '关闭', '字体方案的 off 不能被主题命名影响')
+})
+
+test('CSS：墨色三档只作用于浅色，五级文字 token 全覆盖，且不碰按钮反白字', () => {
+  const styles = collectStyleText()
+  for (const key of ['deep', 'black']) {
+    const match = styles.match(new RegExp('html\\[data-dsh-ux="on"\\]\\[data-dsh-ux-ink="' + key + '"\\][^{]*\\{[^}]*\\}'))
+    assert.ok(match, '缺少墨色闸门: ' + key)
+    for (const token of ['label-primary', 'label-secondary', 'label-tertiary', 'label-caption', 'label-dimmed']) {
+      assert.ok(match[0].includes('--dsw-alias-' + token), key + ' 缺少文字 token: ' + token)
+    }
+    assert.ok(match[0].includes(':not([data-ds-dark-theme])'), key + ' 必须只作用于浅色')
+    assert.ok(!match[0].includes('primary-foreground'), key + ' 不得覆盖按钮上的反白字')
+  }
+  assert.ok(!styles.includes('[data-dsh-ux-ink="theme"]'), '跟随配色不应写任何覆盖规则')
 })
 
 test('折叠契约探测：0.1.x 走旧路径；0.2.0 过程分组走新路径；失配时自禁用并给提示', () => {
@@ -484,7 +600,7 @@ test('字体方案行：六个方案各一枚胶囊；未安装的禁用并标�
   assert.equal(off.children[3], undefined, '关掉字体层就不显示对齐自检块')
 })
 
-test('设置页整页能构建：总开关 → 外观(配色 / 字体方案 / 字重) → 布局 → 数据 → 高级 → 页脚', () => {
+test('设置页整页能构建：Star 入口 → 总开关 → 外观(配色 / 字体方案 / 墨色 / 字重) → 布局 → 数据 → 页脚', () => {
   // 钩子要返回真值，否则 useSyncExternalStore 给出 undefined 会在取 state.master 时炸掉
   const hooksReact = {
     ...REACT_STUB,
@@ -502,22 +618,41 @@ test('设置页整页能构建：总开关 → 外观(配色 / 字体方案 / �
 
   const cls = (node) => (node && node.props && node.props.className) || ''
   const children = tree.children
-  assert.equal(cls(children[0].children[0]), 'dshx-banner', '第一块是宿主半状态横幅')
-  assert.ok(cls(children[1]).includes('dshx-row'), '第二块是总开关行')
-  assert.equal(cls(children[2]), 'dshx-group')
-  assert.equal(children[2].children[0], '外观')
-  assert.ok(cls(children[3]).includes('dshx-row'), '外观里先是配色行')
-  assert.ok(cls(children[4]).includes('dshx-choice'), '紧跟着字体方案行')
-  assert.ok(cls(children[5]).includes('dshx-choice'), '再是字重行')
-  assert.equal(children[6].children[0], '布局')
-  assert.equal(children[9].children[0], '数据')
-  assert.equal(children[11].children[0], '高级')
+  assert.ok(cls(children[0]).includes('dshx-star'), '最上面是 GitHub Star 入口')
+  assert.equal(cls(children[0].children[1]), 'dshx-star-text')
+  const starLink = children[0].children[2]
+  assert.equal(starLink.props.href, 'https://github.com/jiangnanquan/dsh-ux', 'Star 按钮要指向仓库')
+  assert.equal(starLink.props.target, '_blank', 'Star 按钮在新窗口打开')
+  assert.ok(String(starLink.props.rel).includes('noopener'), '新窗口链接要带 noopener')
+  assert.equal(cls(children[1].children[0]), 'dshx-banner', '第二块是宿主半状态横幅')
+  assert.ok(cls(children[2]).includes('dshx-row'), '第三块是总开关行')
+  assert.equal(cls(children[3]), 'dshx-group')
+  assert.equal(children[3].children[0], '外观')
+  assert.ok(cls(children[4]).includes('dshx-choice'), '外观里先是配色主题行')
+  assert.ok(cls(children[5]).includes('dshx-choice'), '紧跟着字体方案行')
+  assert.ok(cls(children[6]).includes('dshx-choice'), '再是文字墨色行')
+  assert.ok(cls(children[7]).includes('dshx-choice'), '最后是字重行')
+  assert.equal(children[8].children[0], '布局')
+  assert.equal(children[11].children[0], '数据')
   assert.equal(cls(children[children.length - 1]), 'dshx-foot', '末尾是版本与恢复默认')
   assert.equal(children.length, 14, '结构变了就更新这条断言，别让它悄悄漂移')
 
+  // 主题行：下拉按谱系分组，选项数 = 全部主题
+  const themeRow = render(children[4])
+  const select = themeRow.children[0].children[2].children[0]
+  assert.equal(select.type, 'select')
+  assert.equal(select.props.value, 'solarized-light')
+  assert.equal(select.children.length, internals.THEME_GROUPS.length, 'optgroup 数 = 主题分组数')
+  const optionCount = select.children.reduce((sum, group) => sum + group.children.length, 0)
+  assert.equal(optionCount, internals.THEMES.length, '选项数 = 全部主题（含官方配色）')
+  assert.equal(themeRow.children[0].children[2].children[1].children.length, 3, '当前主题要显示底/字/强调三色预览')
+
   // 字体方案行里必须能点出六个方案
-  const schemePills = render(children[4]).children[1]
+  const schemePills = render(children[5]).children[1]
   assert.equal(schemePills.children.length, internals.FONT_SCHEMES.length)
+  // 墨色行里必须能点出三档
+  const inkPills = render(children[6]).children[1]
+  assert.equal(inkPills.children.length, internals.INK_SCHEMES.length)
 })
 
 /* ------------------------------------------------------ 3. 注册进哪几个插槽 */
@@ -640,31 +775,58 @@ function runFirstPaintScript(script, cookie) {
   return attributes
 }
 
-test('首帧脚本：cookie 缺失 → 布尔全开 + 字体 auto；关掉的项与方案原样恢复；旧版 cookie 仍认', () => {
+test('首帧脚本：cookie 缺失 → 布尔全开 + Solarized + 字体 auto + 墨色 theme；关掉的项原样恢复；旧版 cookie 仍认', () => {
   const script = applyHost().table[0].text
   const fresh = runFirstPaintScript(script, '')
   assert.equal(fresh.get('data-dsh-ux'), 'on')
   for (const key of internals.BOOL_KEYS) assert.equal(fresh.get('data-dsh-ux-' + key), 'on', key)
+  assert.equal(fresh.get('data-dsh-ux-theme'), 'solarized-light', '主题必须首帧前定好，否则会先按官方配色画一帧')
+  assert.equal(fresh.get('data-dsh-ux-theme-tone'), 'light')
   assert.equal(fresh.get('data-dsh-ux-font'), 'auto', '字体方案必须在首帧前定好，否则会先按官方字体画一帧')
-  assert.equal(fresh.get('data-dsh-ux-fontweight'), 'regular')
+  assert.equal(fresh.get('data-dsh-ux-fontweight'), 'semibold')
+  assert.equal(fresh.get('data-dsh-ux-ink'), 'deep', '墨色默认落在推荐档（深墨）')
 
-  const stored = { master: true, theme: false, font: 'sans-term', fontweight: 'semibold', layout: false, fold: true, usage: false, diag: true }
+  const stored = { master: true, theme: 'kanagawa-wave', font: 'sans-term', fontweight: 'semibold', ink: 'deep', layout: false, fold: true, usage: false, diag: true }
   const restored = runFirstPaintScript(script, 'dsh-enhance-config=' + internals.serializeState(stored))
-  assert.equal(restored.get('data-dsh-ux-theme'), 'off')
+  assert.equal(restored.get('data-dsh-ux-theme'), 'kanagawa-wave')
+  assert.equal(restored.get('data-dsh-ux-theme-tone'), 'dark')
   assert.equal(restored.get('data-dsh-ux-layout'), 'off')
   assert.equal(restored.get('data-dsh-ux-usage'), 'off')
   assert.equal(restored.get('data-dsh-ux-fold'), 'on')
   assert.equal(restored.get('data-dsh-ux-font'), 'sans-term')
   assert.equal(restored.get('data-dsh-ux-fontweight'), 'semibold')
+  assert.equal(restored.get('data-dsh-ux-ink'), 'deep')
 
   const masterOff = runFirstPaintScript(script, 'dsh-enhance-config=' + internals.serializeState({ ...stored, master: false }))
   assert.equal(masterOff.get('data-dsh-ux'), 'off')
   for (const key of internals.BOOL_KEYS) assert.equal(masterOff.get('data-dsh-ux-' + key), 'off', key)
+  assert.equal(masterOff.get('data-dsh-ux-theme'), 'off')
+  assert.equal(masterOff.get('data-dsh-ux-theme-tone'), 'auto')
   assert.equal(masterOff.get('data-dsh-ux-font'), 'off')
+  assert.equal(masterOff.get('data-dsh-ux-ink'), 'deep', '总开关关掉时墨色选择要保留，下次打开原样恢复')
 
   const legacy = runFirstPaintScript(script, 'dsh-enhance-theme=off')
   assert.equal(legacy.get('data-dsh-ux-theme'), 'off')
   assert.equal(legacy.get('data-dsh-ux-fold'), 'on')
+})
+
+test('首帧脚本：主题白名单——越界值回落默认，旧版布尔 theme 映射回默认/off', () => {
+  const script = applyHost().table[0].text
+  const rawTheme = (value) => {
+    const json = encodeURIComponent(JSON.stringify({ master: true, theme: value }))
+    return runFirstPaintScript(script, 'dsh-enhance-config=' + json)
+  }
+  const bogus = rawTheme('neon')
+  assert.equal(bogus.get('data-dsh-ux-theme'), 'solarized-light', '越界主题回落默认')
+  assert.equal(bogus.get('data-dsh-ux-theme-tone'), 'light')
+  const legacyTrue = rawTheme(true)
+  assert.equal(legacyTrue.get('data-dsh-ux-theme'), 'solarized-light', '旧版 theme=true → 默认主题')
+  const legacyFalse = rawTheme(false)
+  assert.equal(legacyFalse.get('data-dsh-ux-theme'), 'off', '旧版 theme=false → 官方配色')
+  assert.equal(legacyFalse.get('data-dsh-ux-theme-tone'), 'auto')
+  const dark = rawTheme('gemini-dark')
+  assert.equal(dark.get('data-dsh-ux-theme'), 'gemini-dark')
+  assert.equal(dark.get('data-dsh-ux-theme-tone'), 'dark')
 })
 
 test('首帧脚本：字体方案白名单——越界值回落默认，旧版布尔 font 映射回 auto/off', () => {
@@ -684,7 +846,7 @@ test('首帧脚本：字体方案白名单——越界值回落默认，旧版�
 
 test('首帧脚本与客户端半的属性口径一致（同名同值）', () => {
   const script = applyHost().table[0].text
-  const state = { master: true, theme: false, font: 'maple', fontweight: 'semibold', layout: true, fold: true, usage: false, diag: true }
+  const state = { master: true, theme: 'rose-pine-dawn', font: 'maple', fontweight: 'semibold', ink: 'deep', layout: true, fold: true, usage: false, diag: true }
   const fromScript = runFirstPaintScript(script, 'dsh-enhance-config=' + internals.serializeState(state))
   const dom = createDom()
   withDom(client, dom, {}, () => internals.applyStateToDom(state))
@@ -692,14 +854,56 @@ test('首帧脚本与客户端半的属性口径一致（同名同值）', () =>
   assert.equal(fromScript.size, dom.attributes.size, '两边写入的属性集合必须完全相同')
 })
 
-test('枚举白名单：宿主半与客户端半的字体方案/字重集合一致', () => {
+test('枚举白名单：宿主半与客户端半的主题/字体/字重/墨色集合一致', () => {
   const hostEnums = read('lib/index.js')
+  for (const key of internals.THEME_KEYS) assert.ok(hostEnums.includes(`'${key}'`), '宿主半白名单缺少主题: ' + key)
   for (const key of internals.FONT_SCHEME_KEYS) assert.ok(hostEnums.includes(`'${key}'`), '宿主半白名单缺少方案: ' + key)
   for (const key of internals.FONT_WEIGHT_KEYS) assert.ok(hostEnums.includes(`'${key}'`), '宿主半白名单缺少字重: ' + key)
+  for (const key of internals.INK_SCHEME_KEYS) assert.ok(hostEnums.includes(`'${key}'`), '宿主半白名单缺少墨色: ' + key)
+  assert.deepEqual([...internals.ENUM_KEYS.theme].sort(), [...internals.THEME_KEYS].sort())
   assert.deepEqual(
     [...internals.ENUM_KEYS.font].sort(),
     ['auto', 'maple', 'noto', 'off', 'sans-mono', 'sans-term'],
   )
+  assert.deepEqual([...internals.ENUM_KEYS.ink].sort(), ['black', 'deep', 'theme'])
+})
+
+test('峰谷计费：北京时间 9-12 / 14-18 为峰，其余为谷；跨天回到次日 9:00', () => {
+  const at = (h, m) => Date.UTC(2026, 9, 17, h - 8, m, 0)
+  const peak = internals.pricingClock(at(10, 0))
+  assert.equal(peak.peak, true)
+  assert.equal(peak.minutes, 120, '10:00 距 12:00 还有 2 小时')
+  assert.equal(peak.nextPeak, false)
+
+  const valley = internals.pricingClock(at(13, 30))
+  assert.equal(valley.peak, false)
+  assert.equal(valley.minutes, 30, '13:30 距 14:00 还有 30 分钟')
+  assert.equal(valley.nextPeak, true)
+
+  const edge = internals.pricingClock(at(11, 59))
+  assert.equal(edge.peak, true)
+  assert.equal(edge.minutes, 1)
+
+  const evening = internals.pricingClock(at(18, 0))
+  assert.equal(evening.peak, false)
+  assert.equal(evening.minutes, 15 * 60, '18:00 之后的下一个边界是次日 9:00')
+  assert.equal(evening.nextPeak, true)
+
+  assert.equal(internals.fmtGap(120), '2 小时')
+  assert.equal(internals.fmtGap(90), '1 小时 30 分')
+  assert.equal(internals.fmtGap(5), '5 分钟')
+  assert.ok(internals.pricingHint(peak).includes('峰时计费'))
+  assert.ok(internals.pricingHint(evening).includes('空闲半价'))
+  assert.equal(internals.isOfficialProvider('deepseek-official'), true)
+  assert.equal(internals.isOfficialProvider('deepseek-account'), true)
+  assert.equal(internals.isOfficialProvider('scnet'), false)
+  assert.equal(internals.isOfficialProvider(undefined), false)
+})
+
+test('宿主半：session-usage 带出最近一次请求的 provider / model', () => {
+  assert.ok(hostSource.includes('config.provider'), 'foldEvents 必须记录 request/header 的 provider')
+  assert.ok(hostSource.includes('fold.provider = currentProvider'))
+  assert.ok(hostSource.includes('fold.model = currentModel'))
 })
 
 test('宿主半不再引用已被删掉的 themeMarkInjection', () => {

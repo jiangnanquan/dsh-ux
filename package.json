@@ -1,6 +1,6 @@
 {
   "name": "dsh-enhance",
-  "version": "1.4.0",
+  "version": "1.8.0",
   "description": "DSH web 界面增强：设置页里每一项都能即时开关（中文优先 / 0.5 窄体等宽字体方案、Solarized 浅色配色、紧凑布局、思考/工具链折叠胶囊、官方余额 + 本轮成本 + 用量图表）",
   "type": "module",
   "main": "lib/index.js",
