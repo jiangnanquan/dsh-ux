@@ -192,9 +192,10 @@ test('客户端半导出 apply/inject，构建号与 package.json 一致', () =>
   assert.ok(hostBuild, '宿主半应从 package.json 读构建号')
 })
 
-test('缺省状态：无属性时布尔全开、主题 Solarized、字体 auto、字重半粗、墨色深墨', () => {
+test('缺省状态：主题 Solarized、字体 auto、字重半粗、墨色深墨、弱化新会话默认关', () => {
   const state = withDom(client, createDom(), {}, () => internals.readStateFromDom())
-  for (const key of internals.BOOL_KEYS) assert.equal(state[key], true, key + ' 应默认开')
+  const expectedBools = { layout: true, fold: true, usage: true, quietnew: false }
+  for (const key of internals.BOOL_KEYS) assert.equal(state[key], expectedBools[key], key + ' 默认值不对')
   assert.equal(state.master, true)
   assert.equal(state.theme, 'solarized-light')
   assert.equal(state.font, 'auto')
@@ -454,6 +455,15 @@ test('CSS：墨色三档只作用于浅色，五级文字 token 全覆盖，且�
   assert.ok(!styles.includes('[data-dsh-ux-ink="theme"]'), '跟随配色不应写任何覆盖规则')
 })
 
+test('CSS：强调色绑定发送/停止与侧栏新会话，quietnew 切弱化样式', () => {
+  const styles = collectStyleText()
+  assert.ok(styles.includes('[data-slot="conversation.composer"] button[class*="_primary"]'), '发送/停止按钮必须吃主题强调色')
+  assert.ok(styles.includes('[data-slot="sidebar"] button[class*="_newSession"]'), '侧栏新会话必须吃主题强调色')
+  assert.ok(styles.includes('html[data-dsh-ux-quietnew="on"] [data-slot="sidebar"] button[class*="_newSession"]'), 'quietnew 必须能覆盖成弱化样式')
+  assert.ok(styles.includes('var(--dshx-on-accent'), '反白字必须用每套主题算好的 on-accent')
+  assert.ok(!styles.includes('data-dsh-ux-quietnew="on"] [data-slot="conversation.composer"]'), 'quietnew 只影响新会话按钮，不应波及发送按钮')
+})
+
 test('折叠契约探测：0.1.x 走旧路径；0.2.0 过程分组走新路径；失配时自禁用并给提示', () => {
   const makeDoc = ({ content, groups, rows }) => ({
     querySelector: (sel) => (sel === '[data-step-process-content]' && content ? {} : null),
@@ -629,13 +639,14 @@ test('设置页整页能构建：Star 入口 → 总开关 → 外观(配色 / �
   assert.equal(cls(children[3]), 'dshx-group')
   assert.equal(children[3].children[0], '外观')
   assert.ok(cls(children[4]).includes('dshx-choice'), '外观里先是配色主题行')
-  assert.ok(cls(children[5]).includes('dshx-choice'), '紧跟着字体方案行')
-  assert.ok(cls(children[6]).includes('dshx-choice'), '再是文字墨色行')
-  assert.ok(cls(children[7]).includes('dshx-choice'), '最后是字重行')
-  assert.equal(children[8].children[0], '布局')
-  assert.equal(children[11].children[0], '数据')
+  assert.ok(cls(children[5]).includes('dshx-row'), '紧跟配色主题的是「新会话按钮弱化」开关')
+  assert.ok(cls(children[6]).includes('dshx-choice'), '再是字体方案行')
+  assert.ok(cls(children[7]).includes('dshx-choice'), '然后是文字墨色行')
+  assert.ok(cls(children[8]).includes('dshx-choice'), '最后是字重行')
+  assert.equal(children[9].children[0], '布局')
+  assert.equal(children[12].children[0], '数据')
   assert.equal(cls(children[children.length - 1]), 'dshx-foot', '末尾是版本与恢复默认')
-  assert.equal(children.length, 14, '结构变了就更新这条断言，别让它悄悄漂移')
+  assert.equal(children.length, 15, '结构变了就更新这条断言，别让它悄悄漂移')
 
   // 主题行：下拉按谱系分组，选项数 = 全部主题
   const themeRow = render(children[4])
@@ -648,10 +659,10 @@ test('设置页整页能构建：Star 入口 → 总开关 → 外观(配色 / �
   assert.equal(themeRow.children[0].children[2].children[1].children.length, 3, '当前主题要显示底/字/强调三色预览')
 
   // 字体方案行里必须能点出六个方案
-  const schemePills = render(children[5]).children[1]
+  const schemePills = render(children[6]).children[1]
   assert.equal(schemePills.children.length, internals.FONT_SCHEMES.length)
   // 墨色行里必须能点出三档
-  const inkPills = render(children[6]).children[1]
+  const inkPills = render(children[7]).children[1]
   assert.equal(inkPills.children.length, internals.INK_SCHEMES.length)
 })
 
@@ -775,11 +786,12 @@ function runFirstPaintScript(script, cookie) {
   return attributes
 }
 
-test('首帧脚本：cookie 缺失 → 布尔全开 + Solarized + 字体 auto + 墨色 theme；关掉的项原样恢复；旧版 cookie 仍认', () => {
+test('首帧脚本：cookie 缺失 → 默认值正确 + Solarized；关掉的项原样恢复；旧版 cookie 仍认', () => {
   const script = applyHost().table[0].text
   const fresh = runFirstPaintScript(script, '')
   assert.equal(fresh.get('data-dsh-ux'), 'on')
-  for (const key of internals.BOOL_KEYS) assert.equal(fresh.get('data-dsh-ux-' + key), 'on', key)
+  const expectedBools = { layout: true, fold: true, usage: true, quietnew: false }
+  for (const key of internals.BOOL_KEYS) assert.equal(fresh.get('data-dsh-ux-' + key), expectedBools[key] ? 'on' : 'off', key)
   assert.equal(fresh.get('data-dsh-ux-theme'), 'solarized-light', '主题必须首帧前定好，否则会先按官方配色画一帧')
   assert.equal(fresh.get('data-dsh-ux-theme-tone'), 'light')
   assert.equal(fresh.get('data-dsh-ux-font'), 'auto', '字体方案必须在首帧前定好，否则会先按官方字体画一帧')

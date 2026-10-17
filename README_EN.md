@@ -23,6 +23,7 @@ pricing hints.
 | Layout | Wider message column, tighter spacing, aligned composer card and `/` `@` candidate menu, rubber-band scrolling disabled |
 | Collapsible capsules | 0.1.x: aggregates reasoning into `Think ×N` and tool calls into an `A → B → C` chain. 0.2.0: the official process-group folding owns visibility; the plugin attaches a capsule summary below the visible "Completed, took X" row and clicks toggle the official disclosure; long chains wrap by available width |
 | Balance and usage | Shows the official account balance, current-session token cost, and a 30-day chart below the composer; official API/account runs also get a peak / off-peak badge |
+| Accent | The send/stop button and the sidebar "New session" button both take the theme's third anchor (`accent`); on-accent text picks black or white per palette |
 
 Long tool chains reflow with the message column while preserving a complete, independent capsule around
 each visual line:
@@ -49,6 +50,10 @@ Each palette declares only four anchors — background, text, accent, and state 
 the surface / border / hover / on-accent tokens are derived by one shared rule set. That keeps the visual
 hierarchy consistent across all 25 and makes a new palette a one-line addition. Dark themes set
 `color-scheme: dark` and use the palette's own ink; the text-ink control applies to light themes only.
+
+The third anchor, `accent`, is applied to the **send/stop button** and the sidebar **"New session"**
+button: the former always follows it, the latter follows it by default and can be switched to a quiet
+style (only slightly darker than the sidebar surface) via **Appearance → Quiet new-session button**.
 
 Every non-Solarized palette meets WCAG AA (4.5:1) for body text on both `bg` and `layer-1`; Solarized
 keeps its hand-tuned token block and relies on the ink setting. Tokyo Night Day's original `#3760BF`
@@ -147,9 +152,10 @@ Open **Settings → 界面增强** (Interface Enhancements). That page holds eve
 | Switch | What turning it off does |
 |--------|--------------------------|
 | Enable dsh-ux enhancements | Master switch. The whole layer is removed immediately and the official look is restored; per-feature choices are remembered and come back when you re-enable it |
+| Theme | Selecting "Official" returns to the official palette; the default is Solarized; the 25 palettes and their naming are described above |
+| Quiet new-session button | Off by default (the button follows the accent); when on, the sidebar "New session" button becomes only slightly darker than the sidebar surface |
 | Font scheme / weight | Back to the official font stack and weights; setting the scheme to "Off" disables just the typography layer; the default weight is SemiBold (recommended) |
 | Text ink | Three-way choice: **Deep ink** (default, recommended), **Follow palette**, **Pure black**; affects light-theme text only, never backgrounds or brand colors |
-| Theme | Selecting "Official" returns to the official palette; the default is Solarized; the 25 palettes and their naming are described above |
 | Compact layout tweaks | Message width, spacing, and composer-card alignment return to the official geometry |
 | Collapsible capsules | Reasoning and tool calls expand inline again, and the injected capsule nodes are removed from the DOM |
 | Balance and usage | The balance/current-cost row, peak badge, and chart disappear, and the balance endpoint is no longer polled |
