@@ -51,6 +51,15 @@ the surface / border / hover / on-accent tokens are derived by one shared rule s
 hierarchy consistent across all 25 and makes a new palette a one-line addition. Dark themes set
 `color-scheme: dark` and use the palette's own ink; the text-ink control applies to light themes only.
 
+Since 0.2.x the official shared menus use a glass material (`--dsw-menu-surface-fill`: 58% light /
+45% dark plus backdrop blur, backed by an opaque `bg-base` layer on macOS). The plugin solves the glass
+fill so that it composites back to the palette's own `layer-1`, takes over the matching
+`--dsw-alias-menu-group-header-fill` (94%), `--dsw-alias-menu-icon`, and
+`--dsw-alias-label-primary-dimmed`, and rebinds the menu's selected/hover fill onto `layer-1`
+(the global hover is base + accent, which is nearly invisible on top of `layer-1`). Without these,
+dark palettes would inherit the official light glass and menus would turn into a pale sheet over a
+dark page.
+
 The third anchor, `accent`, is applied to the **send/stop button** and the sidebar **"New session"**
 button: the former always follows it, the latter follows it by default and can be switched to a quiet
 style (only slightly darker than the sidebar surface) via **Appearance → Quiet new-session button**.

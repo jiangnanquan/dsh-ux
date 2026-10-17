@@ -396,7 +396,7 @@ test('CSS：每套非官方主题都有 token 块与 tone，官方配色不写�
   assert.ok(!styles.includes('data-dsh-ux-theme="off"]'), '官方配色不应留下任何覆盖规则')
   assert.equal((styles.match(/\{/g) || []).length, (styles.match(/\}/g) || []).length, '生成的 CSS 花括号必须配对')
   // 生成的主题必须覆盖五级文字与关键 surface token
-  for (const token of ['--dsw-alias-bg-base', '--dsw-alias-label-primary', '--dsw-alias-label-tertiary', '--dsw-alias-brand-primary']) {
+  for (const token of ['--dsw-alias-bg-base', '--dsw-alias-label-primary', '--dsw-alias-label-tertiary', '--dsw-alias-brand-primary', '--dsw-menu-surface-fill', '--dsw-alias-menu-group-header-fill', '--dsw-alias-menu-icon', '--dsw-alias-label-primary-dimmed']) {
     assert.ok(styles.includes(token), '主题 CSS 缺少 token: ' + token)
   }
 })
@@ -429,6 +429,67 @@ test('配色主题：正文在底色与 layer-1 上达到 AA（Solarized 沿用�
     if (c1 < 4.5 || c2 < 4.5) bad.push(theme.key + ' bg=' + c1.toFixed(2) + ' bg1=' + c2.toFixed(2))
   }
   assert.deepEqual(bad, [], '以下主题正文对比度不达标: ' + bad.join('; '))
+})
+
+test('配色主题：0.2.x 菜单材质玻璃合成回 layer-1，官方主题偏好为浅色时也不漏白', () => {
+  const parseColor = (value) => {
+    const hex = /^#([0-9a-f]{6})$/i.exec(value)
+    if (hex !== null) {
+      const n = parseInt(hex[1], 16)
+      return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255, a: 1 }
+    }
+    const rgba = /^rgba\((\d+), (\d+), (\d+), ([\d.]+)\)$/.exec(value)
+    assert.ok(rgba !== null, '颜色格式无法解析: ' + value)
+    return { r: Number(rgba[1]), g: Number(rgba[2]), b: Number(rgba[3]), a: Number(rgba[4]) }
+  }
+  const lum = ({ r, g, b }) => {
+    const lin = [r, g, b].map((v) => {
+      const s = v / 255
+      return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+    })
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+  }
+  const contrast = (a, b) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x)
+    return (hi + 0.05) / (lo + 0.05)
+  }
+  const compose = (top, under) => ({
+    r: top.a * top.r + (1 - top.a) * under.r,
+    g: top.a * top.g + (1 - top.a) * under.g,
+    b: top.a * top.b + (1 - top.a) * under.b,
+    a: 1,
+  })
+  const bad = []
+  for (const theme of internals.THEMES) {
+    if (theme.key === 'off' || theme.key === 'solarized-light') continue
+    const t = internals.themeTokens(theme)
+    const dark = theme.tone === 'dark'
+    const fill = parseColor(t['--dsw-menu-surface-fill'])
+    // 官方材质语义：浅色 58%、深色 45% 玻璃；吸顶标题 94%
+    if (fill.a !== (dark ? 0.45 : 0.58)) bad.push(theme.key + ' 玻璃透明度=' + fill.a)
+    if (parseColor(t['--dsw-alias-menu-group-header-fill']).a < 0.9) bad.push(theme.key + ' 吸顶标题不是近不透明')
+    // 合成后必须落回本主题的 layer-1（差值只允许取整误差）
+    const composite = compose(fill, parseColor(t['--dsw-alias-bg-base']))
+    const layer1 = parseColor(t['--dsw-alias-bg-layer-1'])
+    for (const channel of ['r', 'g', 'b']) {
+      if (Math.abs(composite[channel] - layer1[channel]) > 1) bad.push(theme.key + ' 玻璃合成偏离 layer-1: ' + channel)
+    }
+    // 菜单上的正文过 AA，菜单图标至少 3:1
+    if (contrast(parseColor(t['--dsw-alias-label-primary']), composite) < 4.5) bad.push(theme.key + ' 菜单正文对比度不足')
+    if (contrast(parseColor(t['--dsw-alias-menu-icon']), composite) < 3) bad.push(theme.key + ' 菜单图标对比度不足')
+  }
+  assert.deepEqual(bad, [], '菜单材质/对比度不达标: ' + bad.join('; '))
+
+  const styles = collectStyleText()
+  // Solarized 手写块也要有这套 token（否则浅色主题的菜单会掉回官方冷白玻璃）
+  for (const token of ['--dsw-menu-surface-fill: rgba(227, 222, 203, 0.58)', '--dsw-alias-menu-group-header-fill: rgba(237, 231, 212, 0.94)', '--dsw-alias-menu-icon: #728487', '--dsw-alias-label-primary-dimmed: #5d7278']) {
+    assert.ok(styles.includes(token), 'Solarized 缺少菜单材质 token: ' + token)
+  }
+  // 菜单面内把交互底色重绑到 layer-1，否则选中/悬停行在玻璃面上同色不可见
+  const rebind = styles.match(/html\[data-dsh-ux="on"\]:not\(\[data-dsh-ux-theme-tone="auto"\]\) \[data-menu-material\] \{[^}]*\}/)
+  assert.ok(rebind !== null, '缺少 [data-menu-material] 交互底色重绑')
+  assert.ok(rebind[0].includes('--dsw-alias-interactive-bg-hover: color-mix(in srgb, var(--dsw-alias-bg-layer-1)'), '菜单 hover 必须以 layer-1 为底重新兑 accent')
+  assert.ok(rebind[0].includes('--dsw-specific-menu: var(--dsw-menu-surface-fill)'), '菜单底部渐隐要跟随菜单材质')
 })
 
 test('主题命名统一为「English · 中文」', () => {

@@ -45,6 +45,13 @@ DeepSeek Harness(DSH)Web 界面增强插件,由**江南泉**个人开发并免�
 由同一套推导规则生成,所以 25 套的层级关系一致,加新配色只需补一行数据。深色主题会自动
 设置 `color-scheme: dark`,并使用配色自带的墨色;「文字墨色」只对浅色主题生效。
 
+0.2.x 起官方公共菜单改用玻璃材质 `--dsw-menu-surface-fill`(浅色 58% / 深色 45% + 背景模糊,
+macOS 另铺一层 `bg-base` 做不透明 backing)。本层按「合成后等于本主题 layer-1」反解玻璃填充,
+并接管配套的吸顶分组标题 `--dsw-alias-menu-group-header-fill`(94%)、菜单图标
+`--dsw-alias-menu-icon` 与暗档文字 `--dsw-alias-label-primary-dimmed`;菜单面内的选中/悬停
+底色则重绑到 layer-1 上(全局 hover 是 base + accent,直接落在 layer-1 上几乎同色)。
+不接管这几个 token 时,深色主题会继承官方浅色玻璃,菜单就成了深色页面上的一块浅色板。
+
 主题的第三个锚点 `accent` 会统一应用到**发送/停止按钮**与侧栏**「新会话」**:前者总是跟随
 accent;后者默认跟随,可在「外观 → 新会话按钮弱化」里改成只比侧栏底色略深的弱化样式。
 
