@@ -492,6 +492,123 @@ test('配色主题：0.2.x 菜单材质玻璃合成回 layer-1，官方主题偏
   assert.ok(rebind[0].includes('--dsw-specific-menu: var(--dsw-menu-surface-fill)'), '菜单底部渐隐要跟随菜单材质')
 })
 
+test('配色主题：官方 0.2.x 新增 token 全量接管，深色主题不再掉回浅色值', () => {
+  const NEW_TOKENS = [
+    '--dsw-alias-bg-document-preview', '--dsw-alias-bg-document-selection', '--dsw-alias-label-document-preview',
+    '--dsw-alias-bg-mask-1', '--dsw-alias-bg-mask-2', '--dsw-alias-bg-mask-3', '--dsw-alias-bg-mask-photo', '--dsw-alias-bg-mask-drop',
+    '--dsw-alias-border-inverted2', '--dsw-alias-brand-primary-invert', '--dsw-alias-brand-primary-new-colorprimary-new-color', '--dsw-alias-brand-text',
+    '--dsw-alias-button-tool-bar-fill', '--dsw-alias-button-tool-bar-hover', '--dsw-alias-button-tool-bar-fill-invisible',
+    '--dsw-alias-label-deep-diving', '--dsw-alias-label-deep-diving-shimmer', '--dsw-alias-label-primary-bluish',
+    '--dsw-alias-label-primary-inverted', '--dsw-alias-label-shimmer', '--dsw-alias-link',
+    '--dsw-alias-state-business-primary', '--dsw-alias-state-business-tertiary',
+    '--dsw-alias-state-error-secondary', '--dsw-alias-state-success-secondary', '--dsw-alias-state-warn-secondary',
+    '--dsw-alias-state-warn-label', '--dsw-alias-state-success-tertiary', '--dsw-alias-state-warn-tertiary', '--dsw-alias-state-idle-primary',
+    '--dsw-alias-code-diff-added', '--dsw-alias-code-diff-deleted',
+    '--dsw-alias-file-diff-added-bg', '--dsw-alias-file-diff-added-gutter', '--dsw-alias-file-diff-added-marker',
+    '--dsw-alias-file-diff-deleted-bg', '--dsw-alias-file-diff-deleted-gutter', '--dsw-alias-file-diff-deleted-marker',
+    '--dsw-alias-switch-thumb', '--dsw-alias-toast-bg', '--dsw-alias-toast-label',
+    '--dsw-alias-tooltip-bg', '--dsw-alias-tooltip-key-bg',
+    '--dsw-alias-turn-trigger-bg', '--dsw-alias-turn-trigger-bg-hover',
+  ]
+  assert.equal(NEW_TOKENS.length, 45, '官方 0.2.x 新增 token 名单必须完整')
+
+  const parseColor = (value) => {
+    const hex = /^#([0-9a-f]{6})$/i.exec(value)
+    if (hex !== null) {
+      const n = parseInt(hex[1], 16)
+      return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255, a: 1 }
+    }
+    const rgba = /^rgba\((\d+), (\d+), (\d+), ([\d.]+)\)$/.exec(value)
+    if (rgba !== null) return { r: Number(rgba[1]), g: Number(rgba[2]), b: Number(rgba[3]), a: Number(rgba[4]) }
+    return null // color-mix / var() 表达式，交给浏览器解析，这里只做存在性检查
+  }
+  const lum = ({ r, g, b }) => {
+    const lin = [r, g, b].map((v) => {
+      const s = v / 255
+      return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+    })
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+  }
+  const contrast = (a, b) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x)
+    return (hi + 0.05) / (lo + 0.05)
+  }
+  const bad = []
+  const tint = (t, key, base) => {
+    const value = parseColor(t[key])
+    if (value === null) return NaN
+    const c = contrast(value, base)
+    return c
+  }
+  for (const theme of internals.THEMES) {
+    if (theme.key === 'off' || theme.key === 'solarized-light') continue
+    const t = internals.themeTokens(theme)
+    const missing = NEW_TOKENS.filter((token) => !(token in t))
+    if (missing.length > 0) {
+      bad.push(theme.key + ' 缺 token: ' + missing.join(','))
+      continue
+    }
+    const bg = parseColor(t['--dsw-alias-bg-base'])
+    const colors = (a, b) => {
+      const x = parseColor(t[a])
+      const y = b === undefined ? undefined : parseColor(t[b])
+      if (x === null || (y !== undefined && y === null)) return NaN
+      return contrast(x, y)
+    }
+    // 品牌色绑定 accent；反白字必须真能读
+    if (t['--dsw-alias-state-business-primary'] !== theme.accent) bad.push(theme.key + ' business-primary 未跟 accent')
+    if (t['--dsw-alias-brand-primary-new-colorprimary-new-color'] !== theme.accent) bad.push(theme.key + ' new-brand-color 未跟 accent')
+    if (colors('--dsw-alias-label-primary-inverted', '--dsw-alias-button-contrast-fill') < 3) bad.push(theme.key + ' 反白标签对比度不足')
+    if (colors('--dsw-alias-toast-label', '--dsw-alias-toast-bg') < 4.5) bad.push(theme.key + ' toast 文字对比度不足')
+    // accent 派生的文字 token 必须过 AA（可读性兜底）
+    for (const token of ['--dsw-alias-link', '--dsw-alias-label-deep-diving']) {
+      if (colors(token, '--dsw-alias-bg-base') < 4.5) bad.push(theme.key + ' ' + token + ' 未过 AA')
+    }
+    if (colors('--dsw-alias-label-document-preview', '--dsw-alias-bg-document-preview') < 4.5) bad.push(theme.key + ' 文档预览文字对比度不足')
+    if (colors('--dsw-alias-label-primary-bluish', '--dsw-alias-state-business-tertiary') < 4.5) bad.push(theme.key + ' bluish 标签对比度不足')
+    // 填充级 token 必须是「淡而可见」的底色混合（1.02~1.7:1），不能是刺眼实色
+    for (const token of ['--dsw-alias-state-business-tertiary', '--dsw-alias-state-success-tertiary', '--dsw-alias-state-warn-tertiary', '--dsw-alias-file-diff-added-bg', '--dsw-alias-file-diff-deleted-bg']) {
+      const c = tint(t, token, bg)
+      if (!(c >= 1.02 && c <= 1.7)) bad.push(theme.key + ' ' + token + ' tint=' + c.toFixed(2))
+    }
+    // diff 标记线在各自的 diff 底上必须可辨
+    for (const side of ['added', 'deleted']) {
+      if (colors('--dsw-alias-file-diff-' + side + '-marker', '--dsw-alias-file-diff-' + side + '-bg') < 2.5) {
+        bad.push(theme.key + ' ' + side + ' diff 标记不可辨')
+      }
+    }
+  }
+  assert.deepEqual(bad, [], '全量 token 对齐不达标: ' + bad.join('; '))
+
+  // 生成的每个主题 CSS 块里都必须真的写出这批 token
+  const styles = collectStyleText()
+  for (const theme of internals.THEMES) {
+    if (theme.key === 'off' || theme.key === 'solarized-light') continue
+    const start = styles.indexOf('html[data-dsh-ux="on"][data-dsh-ux-theme="' + theme.key + '"] body {')
+    assert.ok(start >= 0, '缺少主题块: ' + theme.key)
+    const block = styles.slice(start, styles.indexOf('}', start))
+    for (const token of NEW_TOKENS) assert.ok(block.includes(token + ':'), theme.key + ' CSS 块缺少 ' + token)
+  }
+
+  // Catppuccin Mocha：锁定几处推导值，防止公式漂移
+  const cat = internals.themeTokens(internals.THEMES.find((theme) => theme.key === 'catppuccin-mocha'))
+  assert.equal(cat['--dsw-alias-bg-document-preview'], '#1E1E2E')
+  assert.equal(cat['--dsw-alias-label-primary-inverted'], '#313244')
+  assert.equal(cat['--dsw-alias-toast-bg'], '#3b3b49')
+  assert.equal(cat['--dsw-alias-toast-label'], '#FFFFFF')
+  assert.equal(cat['--dsw-alias-bg-mask-1'], '#00000080')
+  assert.equal(cat['--dsw-alias-turn-trigger-bg'], '#2f2c42')
+  assert.equal(cat['--dsw-alias-label-primary-bluish'], '#CDD6F4')
+  assert.equal(cat['--dsw-alias-bg-document-selection'], 'color-mix(in srgb, #3B82F6 40%, transparent)')
+
+  // Solarized 手写块保持官方 fallback（观感不动）：这批新 token 不进 Solarized 块
+  const solarizedStart = styles.indexOf('html[data-dsh-ux="on"][data-dsh-ux-theme="solarized-light"] body {')
+  const solarizedBlock = styles.slice(solarizedStart, styles.indexOf('}', solarizedStart))
+  for (const token of ['--dsw-alias-link:', '--dsw-alias-state-business-primary:', '--dsw-alias-file-diff-added-bg:']) {
+    assert.ok(!solarizedBlock.includes(token), 'Solarized 保持官方 fallback，不应接管 ' + token)
+  }
+})
+
 test('主题命名统一为「English · 中文」', () => {
   for (const theme of internals.THEMES) {
     assert.ok(

@@ -60,6 +60,14 @@ fill so that it composites back to the palette's own `layer-1`, takes over the m
 dark palettes would inherit the official light glass and menus would turn into a pale sheet over a
 dark page.
 
+The same pass takes over every other token added to the official 0.2.x theme table (49 in total:
+document preview, file diffs, state ladders, masks, tooltip / toast, inverted and bluish labels,
+trajectory brand color, and so on) with rules isomorphic to the official ones: tertiary state fills are
+the background mixed with the state color, diff surfaces are lighter mixes of the same, inverted labels
+take the contrast side of the primary text, and `link` / deep-diving labels start from `accent` and are
+nudged toward black or white until they reach AA. Solarized keeps its hand-tuned block with the official
+fallbacks (official light values are already valid for a light palette).
+
 The third anchor, `accent`, is applied to the **send/stop button** and the sidebar **"New session"**
 button: the former always follows it, the latter follows it by default and can be switched to a quiet
 style (only slightly darker than the sidebar surface) via **Appearance → Quiet new-session button**.
