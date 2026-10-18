@@ -122,6 +122,8 @@ curl -s http://127.0.0.1:3080/enh/ping   # 期望 {"ok":true,"build":"<package.j
 
 # 桌面版:固定 19387
 curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:19387/enh/ping
+# 节假日日历(自动获取验证:offDays 非空、source 是数据源 URL 或 builtin)
+curl -s "http://127.0.0.1:19387/enh/calendar?years=2026,2027"
 ```
 
 - `/enh/ping` 返回 `200` = **宿主半已加载**,`build` 就是当前进程里的宿主半版本;设置页拿它跟
@@ -205,10 +207,11 @@ ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" \
   加入西文 0.6 的字族(如 Maple Mono)会把汉字撑到 1.2,页面上的对齐自检块立刻能看出方框歪斜 ——
   这属于**预期内的现象**,不是渲染 bug。
 - **插件本体更新需要重启**:客户端半(`lib/client.js`)随页面刷新/客户端热重载换新,宿主半
-  (`lib/index.js`:4 条 `/enh/*` 路由 + 首帧注入脚本)由 dsh 进程启动时加载、无法热更新。两半构建号
+  (`lib/index.js`:5 条 `/enh/*` 路由 + 首帧注入脚本)由 dsh 进程启动时加载、无法热更新。两半构建号
   不一致时设置页会提示重启 —— 这是设计内的行为,不是缺陷。校验方式:`/enh/ping` 的 `build` 字段 vs
   `lib/client.js` 里的 `CLIENT_BUILD` vs `package.json.version`,三者必须相同(升版时一起改)。
-- **计价表硬编码**:`lib/index.js` 的 `pricingFor` 按官方峰谷价(北京时间 9–12、14–18 高峰,其余半价;2026-08-17 起新价)写死,官方调价后需人工更新——AI 不可自行假设当前价格仍准确。
+- **计价表硬编码**:`lib/index.js` 的 `pricingFor` / `PRICE_TABLES` 按官方峰谷价写死——高峰仅工作日(周一至周五,不含法定节假日)北京时间 9:00–12:00、14:00–18:00,周末与法定节假日全天空闲价(高峰价一半);历史成本按 2026-08-17、2026-08-23、2026-09-10 12:00 三个调价节点分段。官方调价时必须人工更新——AI 不可自行假设当前价格仍准确。
+- **节假日日历自动获取**:`lib/calendar.js` 每年自动从 [holiday-cn](https://github.com/NateScarlet/holiday-cn)(按国办通知维护的机读 JSON)拉取当年与次年放假安排,解析 `isOffDay` 日期并缓存到 `~/.dsh/dsh-enhance/calendar-<年份>.json`;往年不可变,当年/次年 7 天刷新,客户端每 6 小时同步。次年安排未发布时返回空数据不会误判为「无节假日」;断网用内置 2026 表兜底。客户端半与宿主半的内置兜底表由冒烟测试核对一致——正常年份不需要人工补表,只有兜底表需要时可手工更新。
 - **DOM 依赖**:折叠胶囊 0.1.x 依赖 `data-chat-flow`、`data-tool`、`data-variant="think"` 等属性名；0.2.0 依赖官方过程分组契约 `data-step-process-content` / `data-chat-group-key` / `data-chat-turn` / `data-chat-flow-kind="turn-process"`（挂载点只认 `data-*`，不绑 CSS Module 哈希类名）。DSH 升级若改这些属性，折叠功能会自禁用并回落到不影响其余功能的空转状态。
 - **凭据**:API key 通过 `credentials.resolve("DEEPSEEK_API_KEY")` 运行时解析,本插件从不读取/存储 key 文件。
 - **余额接口的根**:`resolveBaseURL` 读 `llm-deepseek` 当前生效的 `baseURL`,再剥掉 `/anthropic`、`/anthropic/v1`、`/v1` 等接口后缀得到接口根(余额在 OpenAI 兼容根的 `/user/balance` 上)。两代 settings 服务形状不同——0.1.x 走 `settings.get(section)`,0.2.0 走 `settings.describe()` 的 volatile 表单投影(该字段恰好声明为 volatile);两条路都取不到时回落 `https://api.deepseek.com`。若用户把对话端点指向不带这些后缀的自建路径,余额接口会被拼到错误的根上。

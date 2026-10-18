@@ -22,7 +22,7 @@ pricing hints.
 | Typography | CJK-first 0.5-narrow monospace schemes (Sarasa Mono/Term SC, Noto Sans Mono CJK, Maple Mono…); weight defaults to **SemiBold (recommended)** |
 | Layout | Wider message column, tighter spacing, aligned composer card and `/` `@` candidate menu, rubber-band scrolling disabled |
 | Collapsible capsules | 0.1.x: aggregates reasoning into `Think ×N` and tool calls into an `A → B → C` chain. 0.2.0: the official process-group folding owns visibility; the plugin attaches a capsule summary below the visible "Completed, took X" row and clicks toggle the official disclosure; long chains wrap by available width |
-| Balance and usage | Shows the official account balance, current-session token cost, and a 30-day chart below the composer; official API/account runs also get a peak / off-peak badge |
+| Balance and usage | Shows the official account balance, current-session token cost, and a 30-day chart below the composer; official API/account runs also get a peak / off-peak badge, and clicking it explains the official rules and the next switch |
 | Accent | The send/stop button and the sidebar "New session" button both take the theme's third anchor (`accent`); on-accent text picks black or white per palette |
 
 Long tool chains reflow with the message column while preserving a complete, independent capsule around
@@ -150,13 +150,38 @@ when the **provider actually used by the latest request** is `deepseek-official`
 
 | State | Hours (Beijing time) | Display |
 |-------|----------------------|---------|
-| Peak | 09:00–12:00, 14:00–18:00 | Amber "峰" (peak), billed at peak rates |
-| Off-peak | All other hours | Green "谷" (off-peak), billed at half price |
+| Peak | Mon–Fri (excluding Chinese public holidays), 09:00–12:00 and 14:00–18:00 | Amber "峰" (peak), billed at peak rates |
+| Off-peak | All other hours, including **weekends and public holidays all day** | Green "谷" (off-peak), billed at half price |
 
-Hover the badge for the countdown to the next switch. The `title` of both the **Send** and **model
-selector** buttons also carries "官方 API 峰时计费 / 空闲半价" (official API peak / off-peak billing), so a
-hover confirms it right where you spend money. The state is recomputed every 30 seconds, so crossing
-12:00 or 18:00 does not wait for the next usage poll.
+The rule follows DeepSeek's official pricing update of 2026-08-23 and the public-holiday clarification of
+2026-09-19:
+
+- Peak applies only on **workdays** (Mon–Fri, excluding Chinese public holidays) at 09:00–12:00 and
+  14:00–18:00;
+- Saturdays and Sundays are off-peak all day; make-up work weekends (调休上班) still count as weekends;
+- Chinese public holidays are off-peak all day; off-peak rates are half of peak rates.
+
+### Holiday calendar fetched automatically every year
+
+China's holiday schedule is published by the State Council once a year, and the plugin does **not** require
+a yearly code update:
+
+- the host half fetches the machine-readable calendar for the current and next year on demand (from
+  [holiday-cn](https://github.com/NateScarlet/holiday-cn), maintained from the official notice, which is kept
+  in the JSON), parses the `isOffDay` dates, and caches the result;
+- cache lives in `~/.dsh/dsh-enhance/calendar-<year>.json`; past years are immutable, while the current and
+  next year refresh every 7 days, and the client syncs from the host every 6 hours;
+- if next year's schedule is not published yet (the source returns an empty list), it is **not** mistaken for
+  "no holidays" — the workday rule is used until the data appears, then it is adopted automatically;
+- when offline, the built-in 2026 table is used as a fallback and never breaks the badge or cost stats;
+- year rollover is therefore automatic: once the 2027 schedule is published, the badge and cost basis switch
+  by themselves with no code change.
+
+**Click the badge** to open a rule popover: current state and reason (weekend / public holiday / non-peak
+workday), the exact next switch time with countdown, the official definition, and a source link. Hovering
+still shows the countdown, and the `title` of both the **Send** and **model selector** buttons carries
+"官方 API 峰时计费 / 空闲半价" (official API peak / off-peak billing). The state is recomputed every 30
+seconds, so crossing 12:00, 18:00, a weekend or a holiday boundary does not wait for the next usage poll.
 
 The criterion is `request/header.config.provider` in the session log, not "the balance endpoint works" —
 balance uses an API key, and you may well have switched to scnet or opencode2dsh. In that case no badge is
@@ -225,9 +250,14 @@ If you prefer not to run the commands manually, paste the following prompt into 
 - **Balance, current-session cost, usage chart, and peak hints:** these features call the official
   DeepSeek API and require `DEEPSEEK_API_KEY` to be configured in DSH. If credentials are unavailable,
   the fields show an unavailable or failed state without affecting the other features.
-- The pricing table is hard-coded in `pricingFor` inside `lib/index.js` using official peak and off-peak
-  rates (peak hours in Beijing time: 09:00–12:00 and 14:00–18:00; half price at other times). Update it
-  if DeepSeek changes its pricing.
+- The pricing table is hard-coded in `pricingFor` / `PRICE_TABLES` inside `lib/index.js`: peak applies only
+  on workdays at 09:00–12:00 and 14:00–18:00 (Beijing time), while weekends and Chinese public holidays are
+  off-peak all day (half of peak rates). Historical cost is split at 2026-08-17 (peak/off-peak introduced),
+  2026-08-23 (weekends fully off-peak) and 2026-09-10 12:00 (Flash price cut).
+- The Chinese public-holiday schedule is no longer hard-coded per year: `lib/calendar.js` fetches, parses and
+  caches it automatically, so year rollover needs no manual work. `lib/index.js` and `lib/client.js` each
+  keep a built-in 2026 table purely as an offline/first-paint fallback (the smoke test cross-checks them).
+  DeepSeek **price changes** are still event-driven and require a manual table update.
 
 ## Uninstallation
 

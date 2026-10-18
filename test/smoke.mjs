@@ -933,9 +933,12 @@ function applyHost() {
   return { routes, table }
 }
 
-test('宿主半：注册 4 条路由，含 /enh/ping，且构建号取自 package.json', () => {
+test('宿主半：注册 5 条路由，含 /enh/ping 与 /enh/calendar，且构建号取自 package.json', () => {
   const { routes, table } = applyHost()
-  assert.deepEqual(routes.map((r) => r.path).sort(), ['/enh/balance', '/enh/ping', '/enh/session-usage', '/enh/usage'])
+  assert.deepEqual(
+    routes.map((r) => r.path).sort(),
+    ['/enh/balance', '/enh/calendar', '/enh/ping', '/enh/session-usage', '/enh/usage'],
+  )
   assert.ok(routes.every((r) => r.kind === 'exact'))
   assert.equal(table.length, 1)
   assert.equal(table[0].kind, 'script')
@@ -948,6 +951,7 @@ test('宿主半：注册 4 条路由，含 /enh/ping，且构建号取自 packag
   )
   assert.equal(body.ok, true)
   assert.equal(body.build, JSON.parse(read('package.json')).version)
+  assert.deepEqual(body.routes.slice().sort(), ['/enh/balance', '/enh/calendar', '/enh/session-usage', '/enh/usage'])
 })
 
 /** 在同一份状态上跑首帧脚本，返回它写下的属性表。 */
@@ -1058,26 +1062,32 @@ test('枚举白名单：宿主半与客户端半的主题/字体/字重/墨色�
   assert.deepEqual([...internals.ENUM_KEYS.ink].sort(), ['black', 'deep', 'theme'])
 })
 
-test('峰谷计费：北京时间 9-12 / 14-18 为峰，其余为谷；跨天回到次日 9:00', () => {
-  const at = (h, m) => Date.UTC(2026, 9, 17, h - 8, m, 0)
-  const peak = internals.pricingClock(at(10, 0))
+test('峰谷计费：工作日 9-12 / 14-18 为峰，其余为谷；跨天回到次日 9:00', () => {
+  const bj = (y, mo, d, h, mi) => Date.UTC(y, mo - 1, d, h - 8, mi, 0) // 北京时间 → UTC 毫秒
+  const peak = internals.pricingClock(bj(2026, 10, 14, 10, 0)) // 周三
   assert.equal(peak.peak, true)
   assert.equal(peak.minutes, 120, '10:00 距 12:00 还有 2 小时')
   assert.equal(peak.nextPeak, false)
+  assert.equal(peak.reason, 'workday-peak')
 
-  const valley = internals.pricingClock(at(13, 30))
+  const valley = internals.pricingClock(bj(2026, 10, 14, 13, 30))
   assert.equal(valley.peak, false)
   assert.equal(valley.minutes, 30, '13:30 距 14:00 还有 30 分钟')
   assert.equal(valley.nextPeak, true)
 
-  const edge = internals.pricingClock(at(11, 59))
+  const edge = internals.pricingClock(bj(2026, 10, 14, 11, 59))
   assert.equal(edge.peak, true)
   assert.equal(edge.minutes, 1)
 
-  const evening = internals.pricingClock(at(18, 0))
+  const morning = internals.pricingClock(bj(2026, 10, 14, 8, 0))
+  assert.equal(morning.peak, false)
+  assert.equal(morning.minutes, 60)
+
+  const evening = internals.pricingClock(bj(2026, 10, 14, 18, 0))
   assert.equal(evening.peak, false)
   assert.equal(evening.minutes, 15 * 60, '18:00 之后的下一个边界是次日 9:00')
   assert.equal(evening.nextPeak, true)
+  assert.equal(evening.reason, 'workday-off')
 
   assert.equal(internals.fmtGap(120), '2 小时')
   assert.equal(internals.fmtGap(90), '1 小时 30 分')
@@ -1088,6 +1098,285 @@ test('峰谷计费：北京时间 9-12 / 14-18 为峰，其余为谷；跨天回
   assert.equal(internals.isOfficialProvider('deepseek-account'), true)
   assert.equal(internals.isOfficialProvider('scnet'), false)
   assert.equal(internals.isOfficialProvider(undefined), false)
+})
+
+test('峰谷计费：周六/周日全天为谷（含调休上班的周末），倒计时跨到周一 09:00', () => {
+  const bj = (y, mo, d, h, mi) => Date.UTC(y, mo - 1, d, h - 8, mi, 0)
+  // 2026-10-18 周日 09:21 —— 用户报的场景：周末上午不该是峰
+  const sunday = internals.pricingClock(bj(2026, 10, 18, 9, 21))
+  assert.equal(sunday.peak, false)
+  assert.equal(sunday.reason, 'weekend')
+  assert.equal(sunday.weekend, true)
+  assert.equal(sunday.nextPeak, true)
+  assert.equal(sunday.minutes, 23 * 60 + 39, '周日上午 → 周一 09:00 还有 23 小时 39 分')
+  assert.equal(internals.fmtBeijingTime(sunday.nextAt), '10 月 19 日（周一）09:00')
+
+  const saturday = internals.pricingClock(bj(2026, 10, 17, 10, 0))
+  assert.equal(saturday.peak, false)
+  assert.equal(saturday.minutes, 47 * 60, '周六 10:00 → 周一 09:00 是 47 小时')
+
+  // 10-10 周六是国庆调休上班日：官方明确「调休上班的周末」也按周末 → 谷
+  const makeUp = internals.pricingClock(bj(2026, 10, 10, 10, 0))
+  assert.equal(makeUp.peak, false)
+  assert.equal(makeUp.reason, 'weekend')
+  assert.equal(internals.fmtBeijingTime(makeUp.nextAt), '10 月 12 日（周一）09:00')
+
+  assert.equal(internals.fmtGap(saturday.minutes), '1 天 23 小时')
+  assert.ok(internals.pricingHint(sunday).includes('周末'))
+  assert.ok(internals.pricingStateText(sunday).includes('周末'))
+})
+
+test('峰谷计费：中国法定节假日全天为谷，倒计时跨过整段假期', () => {
+  const bj = (y, mo, d, h, mi) => Date.UTC(y, mo - 1, d, h - 8, mi, 0)
+  // 2026-10-01 周四 10:00 国庆假期中 → 谷；下一次高峰是 10-08 周四 09:00
+  const nationalDay = internals.pricingClock(bj(2026, 10, 1, 10, 0))
+  assert.equal(nationalDay.peak, false)
+  assert.equal(nationalDay.reason, 'holiday')
+  assert.equal(nationalDay.holiday, true)
+  assert.equal(nationalDay.nextPeak, true)
+  assert.equal(nationalDay.minutes, 167 * 60, '国庆 10-01 10:00 → 节后 10-08 09:00 是 167 小时')
+  assert.equal(internals.fmtBeijingTime(nationalDay.nextAt), '10 月 8 日（周四）09:00')
+
+  // 假期最后一天 10-07 周三 10:00 → 次个工作日 10-08 09:00
+  const lastDay = internals.pricingClock(bj(2026, 10, 7, 10, 0))
+  assert.equal(lastDay.peak, false)
+  assert.equal(lastDay.minutes, 23 * 60)
+
+  // 中秋前一天 09-24 周四 18:00 → 跨过 09-25~27 假期 → 09-28 周一 09:00
+  const beforeMidAutumn = internals.pricingClock(bj(2026, 9, 24, 18, 0))
+  assert.equal(beforeMidAutumn.peak, false)
+  assert.equal(beforeMidAutumn.minutes, 87 * 60, '09-24 18:00 → 09-28 09:00 是 87 小时')
+
+  assert.equal(internals.isPeakAt(bj(2026, 10, 1, 10, 0)), false)
+  assert.equal(internals.isPeakAt(bj(2026, 10, 8, 10, 0)), true)
+  assert.ok(internals.pricingStateText(nationalDay).includes('法定节假日'))
+  assert.ok(internals.CN_HOLIDAYS.has('2026-10-01'))
+})
+
+test('峰谷徽标：点击后弹出官方规则浮层（文案 / 下一次切换 / 官方出处）', () => {
+  const source = read('lib/client.js')
+  assert.ok(source.includes('function PricingPopover'), '必须有点击后的规则浮层组件')
+  assert.ok(source.includes('onClick: togglePricing'), '徽标点击要绑定开合逻辑')
+  assert.ok(source.includes('"aria-haspopup": "dialog"'))
+  assert.ok(source.includes('官方 API 峰谷计费'), '浮层标题')
+  assert.ok(source.includes('调休上班的周末也按周末计'), '必须写明调休周末口径')
+  assert.ok(source.includes('法定节假日全天按空闲计费'), '必须写明节假日口径')
+  assert.equal(internals.PRICING_DOC_URL, 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing/')
+
+  // 用户报障当天：2026-10-18 周日 09:21（北京时间）
+  const sunday = internals.pricingClock(Date.UTC(2026, 9, 18, 1, 21, 0))
+  assert.equal(sunday.peak, false)
+  assert.ok(internals.pricingStateText(sunday).includes('周末'))
+  assert.equal(internals.fmtBeijingTime(sunday.nextAt), '10 月 19 日（周一）09:00')
+  assert.ok(internals.pricingHint(sunday).includes('点击查看官方规则'))
+})
+
+test('峰谷浮层：渲染出状态 / 规则 / 下一次切换 / 官方出处', () => {
+  const clock = internals.pricingClock(Date.UTC(2026, 9, 18, 1, 21, 0)) // 周日 09:21
+  const tree = render(REACT_STUB.createElement(internals.PricingPopover, {
+    clock: clock,
+    anchor: { left: 10, top: 600, bottom: 620 },
+    onClose: () => {},
+  }))
+  const text = JSON.stringify(tree)
+  assert.ok(text.includes('官方 API 峰谷计费'), '浮层标题')
+  assert.ok(text.includes('周末全天按空闲价计费'), '当前状态与原因')
+  assert.ok(text.includes('不含中国法定节假日'), '官方高峰定义')
+  assert.ok(text.includes('调休上班的周末也按周末计'), '调休周末口径')
+  assert.ok(text.includes('10 月 19 日（周一）09:00'), '下一次切换时间')
+  assert.ok(text.includes(internals.PRICING_DOC_URL), '官方出处链接')
+})
+
+test('宿主半：价格分段（8/17 峰谷、8/23 周末全谷、9/10 Flash 调价）与节假日口径', async () => {
+  const bj = (y, mo, d, h, mi) => Date.UTC(y, mo - 1, d, h - 8, mi, 0)
+  const host = (await import('../lib/index.js')).__test
+  assert.ok(host, '宿主半应导出 __test 钩子')
+
+  // 8/17 之前：不区分峰谷的旧价
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2026, 8, 10, 10, 0)), { hit: 0.02, miss: 1.0, out: 2.0 })
+  assert.deepEqual(host.pricingFor('deepseek-v4-pro', bj(2026, 8, 10, 10, 0)), { hit: 0.025, miss: 3.0, out: 6.0 })
+
+  // 8/17 ~ 8/23：每天（含周末）9-12、14-18 分峰谷
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2026, 8, 17, 10, 0)), { hit: 0.1, miss: 3.0, out: 9.0 })
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2026, 8, 17, 13, 0)), { hit: 0.05, miss: 1.5, out: 4.5 })
+  assert.deepEqual(host.pricingFor('deepseek-v4-pro', bj(2026, 8, 17, 10, 0)), { hit: 0.3, miss: 9.0, out: 27.0 })
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2026, 8, 22, 10, 0)), { hit: 0.1, miss: 3.0, out: 9.0 }, '8/23 之前周六仍分峰谷')
+
+  // 8/23 起周末全谷
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2026, 8, 23, 10, 0)), { hit: 0.05, miss: 1.5, out: 4.5 })
+  assert.deepEqual(host.pricingFor('deepseek-v4-pro', bj(2026, 10, 10, 10, 0)), { hit: 0.15, miss: 4.5, out: 13.5 }, '调休上班的周六仍是谷')
+
+  // 9/10 12:00 Flash 调价前后
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2026, 9, 9, 10, 0)), { hit: 0.1, miss: 3.0, out: 9.0 })
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2026, 9, 10, 11, 59)), { hit: 0.1, miss: 3.0, out: 9.0 })
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2026, 9, 10, 12, 0)), { hit: 0.02, miss: 1.0, out: 4.0 })
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2026, 9, 10, 13, 0)), { hit: 0.02, miss: 1.0, out: 4.0 })
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2026, 10, 14, 10, 0)), { hit: 0.04, miss: 2.0, out: 8.0 })
+  assert.deepEqual(host.pricingFor('deepseek-v4-pro', bj(2026, 10, 14, 10, 0)), { hit: 0.3, miss: 9.0, out: 27.0 })
+
+  // 法定节假日（10-01 国庆）全天谷
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2026, 10, 1, 10, 0)), { hit: 0.02, miss: 1.0, out: 4.0 })
+  assert.deepEqual(host.pricingFor('deepseek-v4-pro', bj(2026, 10, 1, 10, 0)), { hit: 0.15, miss: 4.5, out: 13.5 })
+
+  assert.equal(host.isFlashModel('deepseek-flash'), true)
+  assert.equal(host.isFlashModel('deepseek-v4-flash-vision-exp'), true)
+  assert.equal(host.isFlashModel('deepseek-chat'), true)
+  assert.equal(host.isFlashModel('deepseek-v4-pro'), false)
+  assert.equal(host.isFlashModel(undefined), true)
+
+  // 客户端半与宿主半的内置兜底表、时间线必须一致，否则徽标和成本会互相打架
+  const hostBuiltin = Object.values(host.BUILTIN_OFF_DAYS).flat().sort()
+  assert.deepEqual([...internals.CN_HOLIDAYS].sort(), hostBuiltin, '两半的内置兜底表必须一致')
+  assert.equal(internals.PEAK_PRICING_EPOCH, host.PRICING_EPOCHS.peakPricing)
+  assert.equal(internals.WEEKEND_RULE_EPOCH, host.PRICING_EPOCHS.weekendValley)
+  assert.ok(internals.CN_HOLIDAYS.size >= 30, '2026 年法定节假日应完整收录')
+
+  // 自动获取的次年日历一旦注入，host 计价立即改口径：2027-01-01 元旦 → 谷；01-04 周一 → 峰
+  const calendarModule = await import('../lib/calendar.js')
+  calendarModule.__test.setEntry(2027, ['2027-01-01', '2027-01-02', '2027-01-03'])
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2027, 1, 1, 10, 0)), { hit: 0.02, miss: 1.0, out: 4.0 })
+  assert.deepEqual(host.pricingFor('deepseek-flash', bj(2027, 1, 4, 10, 0)), { hit: 0.04, miss: 2.0, out: 8.0 })
+  calendarModule.__test.deleteEntry(2027)
+
+  // calendarYearsOf：跨年会话要同时拿到两年的日历
+  assert.deepEqual(
+    host.calendarYearsOf([
+      { type: 'assistant/message', time: bj(2026, 12, 31, 23, 0), data: { usage: {} } },
+      { type: 'assistant/message', time: bj(2027, 1, 1, 0, 30), data: { usage: {} } },
+      { type: 'assistant/message', time: bj(2027, 1, 2, 10, 0), data: {} },
+      { type: 'request/header', time: bj(2027, 1, 2, 10, 0), data: {} },
+    ]).sort(),
+    [2026, 2027],
+  )
+})
+
+/* ---------------------------------------------- 5. 年度节假日日历（自动获取） */
+
+const calendar = await import(new URL('lib/calendar.js', root))
+const calendarSource = read('lib/calendar.js')
+
+test('节假日日历：解析 holiday-cn JSON，忽略调休上班日，空数据视为未发布', () => {
+  const days = []
+  for (let i = 1; i <= 12; i++) days.push({ name: '测试', date: '2027-01-' + String(i).padStart(2, '0'), isOffDay: true })
+  days.push({ name: '调休上班', date: '2027-01-20', isOffDay: false })
+  const parsed = calendar.parseHolidayPayload({ year: 2027, papers: ['https://www.gov.cn/'], days }, 2027)
+  assert.equal(parsed.year, 2027)
+  assert.equal(parsed.offDays.length, 12)
+  assert.ok(parsed.offDays.includes('2027-01-12'))
+  assert.ok(!parsed.offDays.includes('2027-01-20'), '调休上班日不是法定节假日')
+  assert.deepEqual(parsed.papers, ['https://www.gov.cn/'])
+  assert.throws(() => calendar.parseHolidayPayload({ year: 2027, days: [] }, 2027), /尚未发布|格式异常/)
+  assert.throws(() => calendar.parseHolidayPayload({ year: 2028, days }, 2027), /年份不匹配/)
+})
+
+test('节假日日历：缓存 TTL——往年不可变，当年与次年每 7 天刷新', () => {
+  const now = Date.UTC(2026, 9, 18, 1, 0, 0)
+  const fresh = { offDays: ['2026-10-01'], source: 'https://cdn/x.json', fetchedAt: now - 3600 * 1000 }
+  const stale = { offDays: ['2026-10-01'], source: 'https://cdn/x.json', fetchedAt: now - 8 * 24 * 3600 * 1000 }
+  const builtin = { offDays: ['2026-10-01'], source: 'builtin', fetchedAt: 0 }
+  assert.equal(calendar.shouldRefresh(fresh, 2026, now, 2026), false)
+  assert.equal(calendar.shouldRefresh(stale, 2026, now, 2026), true)
+  assert.equal(calendar.shouldRefresh(builtin, 2026, now, 2026), true, '内置兜底应尝试联网更新')
+  assert.equal(calendar.shouldRefresh(stale, 2025, now, 2026), false, '往年日历不可变')
+  assert.equal(calendar.shouldRefresh({ offDays: [], source: 'unavailable', fetchedAt: now }, 2027, now, 2026), true)
+})
+
+test('节假日日历：ensureYear 自动拉取（坏源跳过、磁盘缓存、离线兜底）', async () => {
+  const { mkdtempSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-calendar-'))
+  const days = Array.from({ length: 12 }, (_, i) => ({ name: '测试', date: '2027-01-' + String(i + 1).padStart(2, '0'), isOffDay: true }))
+  const payload = { year: 2027, papers: [], days }
+  const nowMs = Date.UTC(2027, 0, 10, 2, 0, 0) // 2027-01-10 10:00 北京时间
+  const calls = []
+  const fetchImpl = async (url) => {
+    calls.push(url)
+    if (url.includes('fastly')) return { ok: true, status: 200, json: async () => payload }
+    throw new Error('blocked: ' + url)
+  }
+  calendar.__test.clearAll()
+  const first = await calendar.ensureYear(2027, { fetchImpl, cacheDir: dir, nowMs })
+  assert.equal(first.offDays.length, 12)
+  assert.ok(first.source.includes('fastly'), '第一个源失败后应落到镜像源')
+  assert.equal(first.stale, false)
+  assert.equal(calls.length, 2, '第一源失败、第二源成功，只发两次请求')
+  // 第二次命中内存，不再请求
+  const before = calls.length
+  await calendar.ensureYear(2027, { fetchImpl, cacheDir: dir, nowMs: nowMs + 1000 })
+  assert.equal(calls.length, before)
+  // 清内存后从磁盘缓存命中，离线也不影响
+  calendar.__test.clearMemory()
+  const fromDisk = await calendar.ensureYear(2027, {
+    fetchImpl: async () => { throw new Error('offline') },
+    cacheDir: dir,
+    nowMs: nowMs + 2000,
+  })
+  assert.equal(fromDisk.offDays.length, 12)
+  assert.equal(fromDisk.stale, false, '磁盘缓存在 7 天有效期内继续可用')
+  // 未发布年份 + 所有源失败 → 空表兜底，不抛错
+  calendar.__test.clearAll()
+  const failed = await calendar.ensureYear(2028, {
+    fetchImpl: async () => ({ ok: false, status: 503 }),
+    cacheDir: dir,
+    nowMs: Date.UTC(2028, 0, 10),
+  })
+  assert.equal(failed.offDays.length, 0)
+  assert.equal(failed.stale, true)
+  assert.ok(failed.error)
+  // 内置 2026 兜底
+  calendar.__test.clearAll()
+  const fallback = await calendar.ensureYear(2026, {
+    fetchImpl: async () => { throw new Error('offline') },
+    cacheDir: dir,
+    nowMs: Date.UTC(2026, 9, 18),
+  })
+  assert.equal(fallback.source, 'builtin')
+  assert.equal(fallback.offDays.length, 33)
+  calendar.__test.clearAll()
+})
+
+test('客户端：自动拉到的次年日历立即改变峰谷判定与倒计时', () => {
+  const bj = (y, mo, d, h, mi) => Date.UTC(y, mo - 1, d, h - 8, mi, 0)
+  const before = internals.pricingClock(bj(2027, 1, 1, 10, 0))
+  assert.equal(before.peak, true, '内置兜底没有 2027，周五先按工作日高峰')
+
+  assert.equal(internals.applyHolidayCalendar({ years: [] }), false, '空响应不应覆盖现有日历')
+  const applied = internals.applyHolidayCalendar({
+    years: [{
+      year: 2027,
+      offDays: ['2027-01-01', '2027-01-02', '2027-01-03'],
+      source: 'https://cdn.jsdelivr.net/x/2027.json',
+      fetchedAt: Date.now(),
+    }],
+  })
+  assert.equal(applied, true)
+  const after = internals.pricingClock(bj(2027, 1, 1, 10, 0))
+  assert.equal(after.peak, false)
+  assert.equal(after.reason, 'holiday')
+  assert.equal(internals.fmtBeijingTime(after.nextAt), '1 月 4 日（周一）09:00')
+  assert.equal(internals.holidayState.source, 'https://cdn.jsdelivr.net/x/2027.json')
+
+  // 远端返回的年份优先于内置兜底：2026 也能被新数据纠正
+  internals.applyHolidayCalendar({ years: [{ year: 2026, offDays: ['2026-01-01'], source: 'test', fetchedAt: Date.now() }] })
+  assert.equal(internals.isChinaHoliday(bj(2026, 10, 1, 10, 0)), false, '远端年份应覆盖内置兜底')
+  internals.resetHolidayCalendarForTest()
+  assert.equal(internals.isChinaHoliday(bj(2026, 10, 1, 10, 0)), true)
+  assert.equal(internals.pricingClock(bj(2027, 1, 1, 10, 0)).peak, true, '复位后回落到内置兜底')
+})
+
+test('接线：自动获取链路（host 路由 + 成本路由预取 + 客户端 6 小时刷新）', () => {
+  assert.ok(hostSource.includes("path: '/enh/calendar'"), '宿主半必须有 /enh/calendar 路由')
+  assert.ok(hostSource.includes('ensureYears(calendarYearsOf('), '成本路由要按事件年份预取日历')
+  assert.ok(hostSource.includes('BUILTIN_OFF_DAYS'), '宿主半保留内置兜底')
+  assert.ok(calendarSource.includes('holiday-cn'), '数据源为按国办通知维护的 holiday-cn')
+  assert.ok(calendarSource.includes('parseHolidayPayload'))
+  assert.ok(calendarSource.includes('writeDiskCache'))
+  const clientSource = read('lib/client.js')
+  assert.ok(clientSource.includes('loadHolidayCalendar'))
+  assert.ok(clientSource.includes('startHolidayCalendar'))
+  assert.ok(clientSource.includes('6 * 3600 * 1000'), '客户端每 6 小时刷新一次')
+  assert.ok(clientSource.includes('applyHolidayCalendar'))
 })
 
 test('宿主半：session-usage 带出最近一次请求的 provider / model', () => {
