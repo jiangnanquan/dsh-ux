@@ -1,6 +1,6 @@
-# dsh-ux
+# dsh-uxexo
 
-[![Listed on DSH Directory](https://dsh.directory/badges/listed.svg)](https://dsh.directory/plugins/jiangnanquan/dsh-ux)
+[![Listed on DSH Directory](https://dsh.directory/badges/listed.svg)](https://dsh.directory/plugins/jiangnanquan/dsh-uxexo)
 
 **中文** | [English](README_EN.md)
 
@@ -25,7 +25,7 @@ DeepSeek Harness(DSH)Web 界面增强插件,由**江南泉**个人开发并免�
 
 ![工具链换行后每行独立胶囊](docs/images/tool-chain-multiline-capsules.png)
 
-设置页顶部还有一枚 GitHub Star 入口:如果 dsh-ux 帮到了你,欢迎去仓库点个 Star。
+设置页顶部还有一枚 GitHub Star 入口:如果 dsh-uxexo 帮到了你,欢迎去仓库点个 Star。
 
 ## 配色主题:江南泉《终端美学》三部曲 25 套
 
@@ -168,7 +168,7 @@ API Key,用户完全可能刚切到 scnet / opencode2dsh,这时不显示峰谷,�
 
 | 开关 | 关掉之后 |
 |------|----------|
-| 启用 dsh-ux 界面增强 | 总开关。整层增强立刻撤下、回到官方外观;各分项的选择保留,再打开时按原样回来 |
+| 启用 dsh-uxexo 界面增强 | 总开关。整层增强立刻撤下、回到官方外观;各分项的选择保留,再打开时按原样回来 |
 | 配色主题 | 下拉里选「Official · 官方配色」即回到官方主题;默认 Solarized;25 套主题与命名见上节 |
 | 新会话按钮弱化 | 默认关闭(「新会话」跟随主题强调色);打开后左上角「新会话」只比侧栏底色略深一点,回到克制的弱化观感 |
 | 字体方案 / 字重 | 回官方字体栈与官方字重;方案选「关闭」等价于只关字体层;默认半粗(推荐) |
@@ -189,7 +189,7 @@ API Key,用户完全可能刚切到 scnet / opencode2dsh,这时不显示峰谷,�
 前置:已按 DSH 的 profile 机制运行(`dsh web`)。
 
 ```bash
-dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
+dsh plugin --profile web add github:jiangnanquan/dsh-uxexo#main
 ```
 
 本包声明了 `dsh.bundle.patch` 与 `dsh.client`,`dsh plugin add` 会自动把它加入 profile 的 bundles,
@@ -204,7 +204,7 @@ dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
 
 不想手动敲命令?把下面这段话粘贴给任意 AI agent(Claude Code、dsh、Gemini CLI……),让它读 INSTALL.md 并完成安装与自检:
 
-> 请按照 https://github.com/jiangnanquan/dsh-ux/blob/main/INSTALL.md 里的步骤,在我的机器上安装并验证 dsh-uxexo 插件(profile 用 web),然后运行文档里的健康检查并告诉我结果。如果任何一步失败,按文档的回滚步骤恢复原状并说明原因。
+> 请按照 https://github.com/jiangnanquan/dsh-uxexo/blob/main/INSTALL.md 里的步骤,在我的机器上安装并验证 dsh-uxexo 插件(profile 用 web),然后运行文档里的健康检查并告诉我结果。如果任何一步失败,按文档的回滚步骤恢复原状并说明原因。
 
 ## 依赖与前提
 

@@ -28,11 +28,11 @@ dsh --profile web --dump-config 2>/dev/null | grep -qi "DEEPSEEK_API_KEY" && ech
 ## 2. 安装
 
 ```bash
-dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
+dsh plugin --profile web add github:jiangnanquan/dsh-uxexo#main
 ```
 
 - **幂等**:已安装时重复执行安全(pnpm 语义),升级用 `dsh plugin --profile web update dsh-uxexo`。
-- **生产环境建议固定 commit**:`dsh plugin --profile web add github:jiangnanquan/dsh-ux#<commit-sha>`。
+- **生产环境建议固定 commit**:`dsh plugin --profile web add github:jiangnanquan/dsh-uxexo#<commit-sha>`。
 - 本仓库 `lib/` 已提交且无 `prepare` 脚本,**无需构建、无需配置 pnpm `allowBuilds`**。
 
 ## 2b. 桌面版(dsh-desktop)安装
@@ -40,7 +40,7 @@ dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
 官方桌面版(`/Applications/DeepSeek Harness.app`)自带 dsh 运行时与 Electron 壳,使用独立的 `desktop` profile(`~/.dsh/profiles/desktop`,固定监听 `127.0.0.1:19387`)。这个 profile 由应用独占:
 
 ```bash
-dsh plugin --profile desktop add github:jiangnanquan/dsh-ux#main
+dsh plugin --profile desktop add github:jiangnanquan/dsh-uxexo#main
 # error: profile "desktop" is managed exclusively by the Electron application
 ```
 
@@ -59,12 +59,12 @@ APP="/Applications/DeepSeek Harness.app"
 PROFILE="$HOME/.dsh/profiles/desktop"
 
 # 2b.2.1 声明依赖与 bundle(改 JSON,不要用 dsh plugin)
-#   dependencies 增加一行:  "dsh-uxexo": "link:/absolute/path/to/dsh-ux"
+#   dependencies 增加一行:  "dsh-uxexo": "link:/absolute/path/to/dsh-uxexo"
 #   dsh.profile.bundles 末尾追加:  "dsh-uxexo"
 
 # 2b.2.2 用桌面版自带 pnpm 落盘依赖(产出 node_modules/dsh-uxexo 符号链接 + pnpm-lock.yaml)
 ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" \
-  "$APP/Contents/Resources/runtime/pnpm/bin/pnpm.mjs" \
+  "$APP/Contents/Resources/runtime/primary-runtime/dependencies/pnpm/bin/pnpm.mjs" \
   --dir "$PROFILE" install
 
 # 2b.2.3 重启桌面版
@@ -182,7 +182,7 @@ PROFILE="$HOME/.dsh/profiles/desktop"
 # 5b.1 从 dependencies 删掉 dsh-uxexo,并从 dsh.profile.bundles 删掉 "dsh-uxexo"
 # 5b.2 用桌面版自带 pnpm prune 掉符号链接
 ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" \
-  "$APP/Contents/Resources/runtime/pnpm/bin/pnpm.mjs" --dir "$PROFILE" install
+  "$APP/Contents/Resources/runtime/primary-runtime/dependencies/pnpm/bin/pnpm.mjs" --dir "$PROFILE" install
 # 5b.3 重启桌面版
 ```
 

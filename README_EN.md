@@ -1,6 +1,6 @@
-# dsh-ux
+# dsh-uxexo
 
-[![Listed on DSH Directory](https://dsh.directory/badges/listed.svg)](https://dsh.directory/plugins/jiangnanquan/dsh-ux)
+[![Listed on DSH Directory](https://dsh.directory/badges/listed.svg)](https://dsh.directory/plugins/jiangnanquan/dsh-uxexo)
 
 [中文](README.md) | **English**
 
@@ -30,7 +30,7 @@ each visual line:
 
 ![Each wrapped tool-chain line uses its own capsule](docs/images/tool-chain-multiline-capsules.png)
 
-If dsh-ux makes your interface a little nicer, a Star on the repository is the best way to support it.
+If dsh-uxexo makes your interface a little nicer, a Star on the repository is the best way to support it.
 
 ## Themes: 25 palettes from Jiangnan Quan's *Terminal Aesthetics* trilogy
 
@@ -193,7 +193,7 @@ Open **Settings → 界面增强** (Interface Enhancements). That page holds eve
 
 | Switch | What turning it off does |
 |--------|--------------------------|
-| Enable dsh-ux enhancements | Master switch. The whole layer is removed immediately and the official look is restored; per-feature choices are remembered and come back when you re-enable it |
+| Enable dsh-uxexo enhancements | Master switch. The whole layer is removed immediately and the official look is restored; per-feature choices are remembered and come back when you re-enable it |
 | Theme | Selecting "Official" returns to the official palette; the default is Solarized; the 25 palettes and their naming are described above |
 | Quiet new-session button | Off by default (the button follows the accent); when on, the sidebar "New session" button becomes only slightly darker than the sidebar surface |
 | Font scheme / weight | Back to the official font stack and weights; setting the scheme to "Off" disables just the typography layer; the default weight is SemiBold (recommended) |
@@ -217,7 +217,7 @@ is what `GET /enh/ping` is for.
 Prerequisite: DSH is already running through its profile mechanism (`dsh web`).
 
 ```bash
-dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
+dsh plugin --profile web add github:jiangnanquan/dsh-uxexo#main
 ```
 
 The package declares both `dsh.bundle.patch` and `dsh.client`. `dsh plugin add` automatically adds the
@@ -234,7 +234,7 @@ required. Running the installation command again is safe and idempotent. To upda
 If you prefer not to run the commands manually, paste the following prompt into any AI coding agent
 (Claude Code, DSH, Gemini CLI, and others) and ask it to follow `INSTALL.md`:
 
-> Follow the instructions in https://github.com/jiangnanquan/dsh-ux/blob/main/INSTALL.md to install and
+> Follow the instructions in https://github.com/jiangnanquan/dsh-uxexo/blob/main/INSTALL.md to install and
 > verify the dsh-uxexo plugin on my machine using the web profile. Run the documented health checks and
 > report the results. If any step fails, follow the rollback instructions and explain the cause.
 
