@@ -6,7 +6,7 @@
 
 DeepSeek Harness(DSH)Web 界面增强插件,由**江南泉**个人开发并免费开源。它在设置面板里提供独立一页「界面增强」,所有开关即时生效;包含 25 套终端美学配色、文字墨色、中文优先字体、紧凑布局、折叠胶囊,以及账户余额 / 用量与官方峰谷提醒。
 
-![dsh-enhance](screenshot.png)
+![dsh-uxexo](screenshot.png)
 
 ## 能力
 
@@ -148,7 +148,7 @@ provider** 是 `deepseek-official` 或 `deepseek-account` 时出现:
 
 - host 半按需拉取当年与次年的机读日历(来源:[holiday-cn](https://github.com/NateScarlet/holiday-cn),
   按国办通知维护,JSON 里保留原通知链接),解析出 `isOffDay` 的日期并缓存;
-- 缓存位置 `~/.dsh/dsh-enhance/calendar-<年份>.json`;往年日历视为不可变,当年/次年每 7 天刷新,
+- 缓存位置 `~/.dsh/dsh-uxexo/calendar-<年份>.json`;往年日历视为不可变,当年/次年每 7 天刷新,
   客户端每 6 小时向 host 同步一次;
 - 次年安排未发布时(数据源返回空列表)不会误判为「没有节假日」,仍按工作日口径兜底,发布后自动采纳;
 - 断网时用内置的 2026 表兜底,不影响徽标与成本统计;
@@ -194,7 +194,7 @@ dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
 
 本包声明了 `dsh.bundle.patch` 与 `dsh.client`,`dsh plugin add` 会自动把它加入 profile 的 bundles,
 **重启 dsh 后即生效**,无需手改任何配置。重复执行该命令是安全的(幂等);升级用
-`dsh plugin --profile web update dsh-enhance`。
+`dsh plugin --profile web update dsh-uxexo`。
 
 > **官方桌面版不使用这条命令**:`desktop` profile 由 Electron 应用独占,
 > `dsh plugin --profile desktop …` 会被直接拒绝。桌面版装法见
@@ -204,7 +204,7 @@ dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
 
 不想手动敲命令?把下面这段话粘贴给任意 AI agent(Claude Code、dsh、Gemini CLI……),让它读 INSTALL.md 并完成安装与自检:
 
-> 请按照 https://github.com/jiangnanquan/dsh-ux/blob/main/INSTALL.md 里的步骤,在我的机器上安装并验证 dsh-enhance 插件(profile 用 web),然后运行文档里的健康检查并告诉我结果。如果任何一步失败,按文档的回滚步骤恢复原状并说明原因。
+> 请按照 https://github.com/jiangnanquan/dsh-ux/blob/main/INSTALL.md 里的步骤,在我的机器上安装并验证 dsh-uxexo 插件(profile 用 web),然后运行文档里的健康检查并告诉我结果。如果任何一步失败,按文档的回滚步骤恢复原状并说明原因。
 
 ## 依赖与前提
 
@@ -225,7 +225,7 @@ dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
 ## 卸载
 
 ```bash
-dsh plugin --profile web remove dsh-enhance
+dsh plugin --profile web remove dsh-uxexo
 ```
 
 ## License

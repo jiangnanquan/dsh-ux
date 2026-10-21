@@ -1,6 +1,6 @@
-# INSTALL.md — dsh-enhance 安装契约(AI agent 可执行)
+# INSTALL.md — dsh-uxexo 安装契约(AI agent 可执行)
 
-本文档是 `dsh-enhance` 的机器可读安装契约,供 AI agent(Claude Code、dsh、Gemini CLI 等)或人工照此执行。每一步都是**确定性命令**,重复执行安全。
+本文档是 `dsh-uxexo` 的机器可读安装契约,供 AI agent(Claude Code、dsh、Gemini CLI 等)或人工照此执行。每一步都是**确定性命令**,重复执行安全。
 
 **目标**:在用户的 `web` profile 或官方桌面版的 `desktop` profile 上安装本插件,验证配置树与运行状态,失败时干净回滚。
 
@@ -31,7 +31,7 @@ dsh --profile web --dump-config 2>/dev/null | grep -qi "DEEPSEEK_API_KEY" && ech
 dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
 ```
 
-- **幂等**:已安装时重复执行安全(pnpm 语义),升级用 `dsh plugin --profile web update dsh-enhance`。
+- **幂等**:已安装时重复执行安全(pnpm 语义),升级用 `dsh plugin --profile web update dsh-uxexo`。
 - **生产环境建议固定 commit**:`dsh plugin --profile web add github:jiangnanquan/dsh-ux#<commit-sha>`。
 - 本仓库 `lib/` 已提交且无 `prepare` 脚本,**无需构建、无需配置 pnpm `allowBuilds`**。
 
@@ -59,10 +59,10 @@ APP="/Applications/DeepSeek Harness.app"
 PROFILE="$HOME/.dsh/profiles/desktop"
 
 # 2b.2.1 声明依赖与 bundle(改 JSON,不要用 dsh plugin)
-#   dependencies 增加一行:  "dsh-enhance": "link:/absolute/path/to/dsh-ux"
-#   dsh.profile.bundles 末尾追加:  "dsh-enhance"
+#   dependencies 增加一行:  "dsh-uxexo": "link:/absolute/path/to/dsh-ux"
+#   dsh.profile.bundles 末尾追加:  "dsh-uxexo"
 
-# 2b.2.2 用桌面版自带 pnpm 落盘依赖(产出 node_modules/dsh-enhance 符号链接 + pnpm-lock.yaml)
+# 2b.2.2 用桌面版自带 pnpm 落盘依赖(产出 node_modules/dsh-uxexo 符号链接 + pnpm-lock.yaml)
 ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" \
   "$APP/Contents/Resources/runtime/pnpm/bin/pnpm.mjs" \
   --dir "$PROFILE" install
@@ -77,11 +77,11 @@ ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" \
 ## 3. 机器验证(不依赖 UI)
 
 ```bash
-# 3.1 bundles 已自动写入(输出必须含 dsh-enhance)
-node -e 'const p=require(process.env.HOME+"/.dsh/profiles/web/package.json");const b=p.dsh?.profile?.bundles||[];console.log(b.includes("dsh-enhance")?"bundles ✓":"bundles ✗ 缺失,回看第 2 步")'
+# 3.1 bundles 已自动写入(输出必须含 dsh-uxexo)
+node -e 'const p=require(process.env.HOME+"/.dsh/profiles/web/package.json");const b=p.dsh?.profile?.bundles||[];console.log(b.includes("dsh-uxexo")?"bundles ✓":"bundles ✗ 缺失,回看第 2 步")'
 
-# 3.2 配置树已合成 dsh-enhance 行
-dsh --profile web --dump-config | grep -i "dsh-enhance"
+# 3.2 配置树已合成 dsh-uxexo 行
+dsh --profile web --dump-config | grep -i "dsh-uxexo"
 ```
 
 两项都有输出 = 安装成功。
@@ -96,16 +96,16 @@ PROFILE="$HOME/.dsh/profiles/desktop"
 CHECK="$HOME/.dsh/profiles/dshux-check"
 
 # 3b.1 bundles 已声明
-node -e 'const p=require(process.env.HOME+"/.dsh/profiles/desktop/package.json");const b=p.dsh?.profile?.bundles||[];console.log(b.includes("dsh-enhance")?"bundles ✓":"bundles ✗ 缺失,回看第 2b 步")'
+node -e 'const p=require(process.env.HOME+"/.dsh/profiles/desktop/package.json");const b=p.dsh?.profile?.bundles||[];console.log(b.includes("dsh-uxexo")?"bundles ✓":"bundles ✗ 缺失,回看第 2b 步")'
 
 # 3b.2 依赖已落盘(应打印一条指向本仓库的符号链接)
-ls -l "$PROFILE/node_modules/dsh-enhance"
+ls -l "$PROFILE/node_modules/dsh-uxexo"
 
 # 3b.3 组合里出现插件行,且 stderr 为空
 rm -rf "$CHECK" && cp -R "$PROFILE" "$CHECK"
 ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" \
   "$APP/Contents/Resources/app.asar/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js" \
-  --profile dshux-check --dump-config | grep -A1 "== dsh-enhance"
+  --profile dshux-check --dump-config | grep -A1 "== dsh-uxexo"
 rm -rf "$CHECK"   # 只删刚复制出来的临时 profile
 ```
 
@@ -150,7 +150,7 @@ curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3080/enh/balance
   下方的「对齐自检块」里第 1 行(40 个半角字符)与第 2 行(20 个汉字)必须等宽、方框必须是矩形;
   对不齐就说明该字族不是 0.5 窄体(见下一条)。选 Mono/Term 的差别看第 3 行(歧义字符):
   Mono 下与第 1 行等宽,Term 下只有一半。
-- 关掉总开关应回到官方外观;再打开时各分项保持原样(状态存在 cookie:键名 `dsh-enhance-config`)。
+- 关掉总开关应回到官方外观;再打开时各分项保持原样(状态存在 cookie:键名 `dsh-uxexo-config`)。
 - 不想点 UI 也可直接看 `<html>` 上的 `data-dsh-ux` / `data-dsh-ux-<键>` 属性是否随之翻转。
 
 ### 4c. 机器自检(不需要启动 dsh,纯 Node)
@@ -169,7 +169,7 @@ node test/smoke.mjs
 
 ```bash
 # web
-dsh plugin --profile web remove dsh-enhance
+dsh plugin --profile web remove dsh-uxexo
 ```
 
 此命令同时从 profile 的 `dsh.profile.bundles` 移除声明,重启 dsh 后完全恢复。
@@ -179,7 +179,7 @@ dsh plugin --profile web remove dsh-enhance
 ```bash
 APP="/Applications/DeepSeek Harness.app"
 PROFILE="$HOME/.dsh/profiles/desktop"
-# 5b.1 从 dependencies 删掉 dsh-enhance,并从 dsh.profile.bundles 删掉 "dsh-enhance"
+# 5b.1 从 dependencies 删掉 dsh-uxexo,并从 dsh.profile.bundles 删掉 "dsh-uxexo"
 # 5b.2 用桌面版自带 pnpm prune 掉符号链接
 ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" \
   "$APP/Contents/Resources/runtime/pnpm/bin/pnpm.mjs" --dir "$PROFILE" install
@@ -188,7 +188,7 @@ ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" \
 
 ## 6. 已知边界(agent 判断用)
 
-- **开关状态存 cookie**:`dsh-enhance-config`(URL-encoded JSON,含 `master` + 各分项布尔值 + 两个枚举
+- **开关状态存 cookie**:`dsh-uxexo-config`(URL-encoded JSON,含 `master` + 各分项布尔值 + 两个枚举
   `font` / `fontweight`)。宿主半在 index 注入的首帧脚本读它、在任何渲染前把状态写到 `<html data-dsh-ux-*>`
   上;客户端半改开关时写同一批属性并回写 cookie。**布尔属性的语义是「总开关 && 分项」的合取**,所以分项
   原始选择只在 cookie 里 —— 定位「开关不生效」时先看属性对不对,再看 cookie 内容;删掉 cookie 等于回到
@@ -211,7 +211,7 @@ ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/DeepSeek Harness" \
   不一致时设置页会提示重启 —— 这是设计内的行为,不是缺陷。校验方式:`/enh/ping` 的 `build` 字段 vs
   `lib/client.js` 里的 `CLIENT_BUILD` vs `package.json.version`,三者必须相同(升版时一起改)。
 - **计价表硬编码**:`lib/index.js` 的 `pricingFor` / `PRICE_TABLES` 按官方峰谷价写死——高峰仅工作日(周一至周五,不含法定节假日)北京时间 9:00–12:00、14:00–18:00,周末与法定节假日全天空闲价(高峰价一半);历史成本按 2026-08-17、2026-08-23、2026-09-10 12:00 三个调价节点分段。官方调价时必须人工更新——AI 不可自行假设当前价格仍准确。
-- **节假日日历自动获取**:`lib/calendar.js` 每年自动从 [holiday-cn](https://github.com/NateScarlet/holiday-cn)(按国办通知维护的机读 JSON)拉取当年与次年放假安排,解析 `isOffDay` 日期并缓存到 `~/.dsh/dsh-enhance/calendar-<年份>.json`;往年不可变,当年/次年 7 天刷新,客户端每 6 小时同步。次年安排未发布时返回空数据不会误判为「无节假日」;断网用内置 2026 表兜底。客户端半与宿主半的内置兜底表由冒烟测试核对一致——正常年份不需要人工补表,只有兜底表需要时可手工更新。
+- **节假日日历自动获取**:`lib/calendar.js` 每年自动从 [holiday-cn](https://github.com/NateScarlet/holiday-cn)(按国办通知维护的机读 JSON)拉取当年与次年放假安排,解析 `isOffDay` 日期并缓存到 `~/.dsh/dsh-uxexo/calendar-<年份>.json`;往年不可变,当年/次年 7 天刷新,客户端每 6 小时同步。次年安排未发布时返回空数据不会误判为「无节假日」;断网用内置 2026 表兜底。客户端半与宿主半的内置兜底表由冒烟测试核对一致——正常年份不需要人工补表,只有兜底表需要时可手工更新。
 - **DOM 依赖**:折叠胶囊 0.1.x 依赖 `data-chat-flow`、`data-tool`、`data-variant="think"` 等属性名；0.2.0 依赖官方过程分组契约 `data-step-process-content` / `data-chat-group-key` / `data-chat-turn` / `data-chat-flow-kind="turn-process"`（挂载点只认 `data-*`，不绑 CSS Module 哈希类名）。DSH 升级若改这些属性，折叠功能会自禁用并回落到不影响其余功能的空转状态。
 - **凭据**:API key 通过 `credentials.resolve("DEEPSEEK_API_KEY")` 运行时解析,本插件从不读取/存储 key 文件。
 - **余额接口的根**:`resolveBaseURL` 读 `llm-deepseek` 当前生效的 `baseURL`,再剥掉 `/anthropic`、`/anthropic/v1`、`/v1` 等接口后缀得到接口根(余额在 OpenAI 兼容根的 `/user/balance` 上)。两代 settings 服务形状不同——0.1.x 走 `settings.get(section)`,0.2.0 走 `settings.describe()` 的 volatile 表单投影(该字段恰好声明为 volatile);两条路都取不到时回落 `https://api.deepseek.com`。若用户把对话端点指向不带这些后缀的自建路径,余额接口会被拼到错误的根上。

@@ -10,7 +10,7 @@ Settings where every toggle applies instantly: 25 terminal-aesthetics themes, te
 typography, compact layout, collapsible capsules, account balance/usage, and official peak/off-peak
 pricing hints.
 
-![dsh-enhance](screenshot.png)
+![dsh-uxexo](screenshot.png)
 
 ## Features
 
@@ -169,7 +169,7 @@ a yearly code update:
 - the host half fetches the machine-readable calendar for the current and next year on demand (from
   [holiday-cn](https://github.com/NateScarlet/holiday-cn), maintained from the official notice, which is kept
   in the JSON), parses the `isOffDay` dates, and caches the result;
-- cache lives in `~/.dsh/dsh-enhance/calendar-<year>.json`; past years are immutable, while the current and
+- cache lives in `~/.dsh/dsh-uxexo/calendar-<year>.json`; past years are immutable, while the current and
   next year refresh every 7 days, and the client syncs from the host every 6 hours;
 - if next year's schedule is not published yet (the source returns an empty list), it is **not** mistaken for
   "no holidays" — the workday rule is used until the data appears, then it is adopted automatically;
@@ -223,7 +223,7 @@ dsh plugin --profile web add github:jiangnanquan/dsh-ux#main
 The package declares both `dsh.bundle.patch` and `dsh.client`. `dsh plugin add` automatically adds the
 plugin to the profile bundle list. **Restart DSH to activate it**; no manual configuration edits are
 required. Running the installation command again is safe and idempotent. To update, run
-`dsh plugin --profile web update dsh-enhance`.
+`dsh plugin --profile web update dsh-uxexo`.
 
 > **The official desktop app does not use this command**: the `desktop` profile is owned exclusively by
 > the Electron application and `dsh plugin --profile desktop …` is rejected outright. See
@@ -235,7 +235,7 @@ If you prefer not to run the commands manually, paste the following prompt into 
 (Claude Code, DSH, Gemini CLI, and others) and ask it to follow `INSTALL.md`:
 
 > Follow the instructions in https://github.com/jiangnanquan/dsh-ux/blob/main/INSTALL.md to install and
-> verify the dsh-enhance plugin on my machine using the web profile. Run the documented health checks and
+> verify the dsh-uxexo plugin on my machine using the web profile. Run the documented health checks and
 > report the results. If any step fails, follow the rollback instructions and explain the cause.
 
 ## Requirements and Notes
@@ -262,7 +262,7 @@ If you prefer not to run the commands manually, paste the following prompt into 
 ## Uninstallation
 
 ```bash
-dsh plugin --profile web remove dsh-enhance
+dsh plugin --profile web remove dsh-uxexo
 ```
 
 ## License

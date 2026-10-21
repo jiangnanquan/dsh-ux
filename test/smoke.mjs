@@ -1,5 +1,5 @@
 /**
- * dsh-enhance 冒烟测试（无需启动 dsh / 桌面版）。
+ * dsh-uxexo 冒烟测试（无需启动 dsh / 桌面版）。
  *
  * 覆盖三件在真机上很难反复验证的事：
  *   1. 客户端半的开关状态机：属性/cookie → store → 属性 + cookie 的往返；
@@ -285,7 +285,7 @@ test('初始状态以 cookie 为准：总开关关过一轮，分项选择不能
   const raw = { master: false, theme: false, font: 'sans-term', fontweight: 'semibold', layout: false, fold: true, usage: false, diag: true }
   const dom = createDom()
   // 属性里只有合取（总开关关着 → 布尔全 off、font 写 off），cookie 里才是原始选择
-  dom.document.cookie = 'dsh-enhance-config=' + internals.serializeState(raw)
+  dom.document.cookie = 'dsh-uxexo-config=' + internals.serializeState(raw)
   for (const key of internals.BOOL_KEYS) dom.document.documentElement.setAttribute('data-dsh-ux-' + key, 'off')
   dom.document.documentElement.setAttribute('data-dsh-ux', 'off')
   dom.document.documentElement.setAttribute('data-dsh-ux-font', 'off')
@@ -311,7 +311,7 @@ test('store.set 同时改写 html 属性和 cookie（即时开关的两条腿）
 
     store.set('theme', 'off')
     assert.equal(dom.attributes.get('data-dsh-ux-theme'), 'off')
-    assert.ok(dom.cookieLog.some((entry) => entry.startsWith('dsh-enhance-config=')), '应写入配置 cookie')
+    assert.ok(dom.cookieLog.some((entry) => entry.startsWith('dsh-uxexo-config=')), '应写入配置 cookie')
     assert.ok(dom.cookieLog.some((entry) => entry.startsWith('dsh-enhance-theme=;')), '应清掉旧版 cookie')
     assert.equal(store.get().theme, 'off')
     assert.equal(notified, 1, '一次 set 只通知一次')
@@ -809,7 +809,7 @@ test('设置页整页能构建：Star 入口 → 总开关 → 外观(配色 / �
   assert.ok(cls(children[0]).includes('dshx-star'), '最上面是 GitHub Star 入口')
   assert.equal(cls(children[0].children[1]), 'dshx-star-text')
   const starLink = children[0].children[2]
-  assert.equal(starLink.props.href, 'https://github.com/jiangnanquan/dsh-ux', 'Star 按钮要指向仓库')
+  assert.equal(starLink.props.href, 'https://github.com/jiangnanquan/dsh-uxexo', 'Star 按钮要指向仓库')
   assert.equal(starLink.props.target, '_blank', 'Star 按钮在新窗口打开')
   assert.ok(String(starLink.props.rel).includes('noopener'), '新窗口链接要带 noopener')
   assert.equal(cls(children[1].children[0]), 'dshx-banner', '第二块是宿主半状态横幅')
@@ -872,7 +872,7 @@ test('插槽：整插件一个 settings.section，且不再占用 settings.gener
     'shell.overlay',
   ])
   const section = registrations.find((r) => r.slot === 'settings.section')
-  assert.equal(section.options.id, 'dsh-enhance')
+  assert.equal(section.options.id, 'dsh-uxexo')
   assert.equal(section.options.label, '界面增强')
   assert.equal(typeof section.component, 'function')
   assert.ok(!registrations.some((r) => r.slot === 'settings.general.item'), '配色行已迁出「通用设置」')
@@ -981,7 +981,7 @@ test('首帧脚本：cookie 缺失 → 默认值正确 + Solarized；关掉的�
   assert.equal(fresh.get('data-dsh-ux-ink'), 'deep', '墨色默认落在推荐档（深墨）')
 
   const stored = { master: true, theme: 'kanagawa-wave', font: 'sans-term', fontweight: 'semibold', ink: 'deep', layout: false, fold: true, usage: false, diag: true }
-  const restored = runFirstPaintScript(script, 'dsh-enhance-config=' + internals.serializeState(stored))
+  const restored = runFirstPaintScript(script, 'dsh-uxexo-config=' + internals.serializeState(stored))
   assert.equal(restored.get('data-dsh-ux-theme'), 'kanagawa-wave')
   assert.equal(restored.get('data-dsh-ux-theme-tone'), 'dark')
   assert.equal(restored.get('data-dsh-ux-layout'), 'off')
@@ -991,7 +991,7 @@ test('首帧脚本：cookie 缺失 → 默认值正确 + Solarized；关掉的�
   assert.equal(restored.get('data-dsh-ux-fontweight'), 'semibold')
   assert.equal(restored.get('data-dsh-ux-ink'), 'deep')
 
-  const masterOff = runFirstPaintScript(script, 'dsh-enhance-config=' + internals.serializeState({ ...stored, master: false }))
+  const masterOff = runFirstPaintScript(script, 'dsh-uxexo-config=' + internals.serializeState({ ...stored, master: false }))
   assert.equal(masterOff.get('data-dsh-ux'), 'off')
   for (const key of internals.BOOL_KEYS) assert.equal(masterOff.get('data-dsh-ux-' + key), 'off', key)
   assert.equal(masterOff.get('data-dsh-ux-theme'), 'off')
@@ -1008,7 +1008,7 @@ test('首帧脚本：主题白名单——越界值回落默认，旧版布尔 t
   const script = applyHost().table[0].text
   const rawTheme = (value) => {
     const json = encodeURIComponent(JSON.stringify({ master: true, theme: value }))
-    return runFirstPaintScript(script, 'dsh-enhance-config=' + json)
+    return runFirstPaintScript(script, 'dsh-uxexo-config=' + json)
   }
   const bogus = rawTheme('neon')
   assert.equal(bogus.get('data-dsh-ux-theme'), 'solarized-light', '越界主题回落默认')
@@ -1025,11 +1025,11 @@ test('首帧脚本：主题白名单——越界值回落默认，旧版布尔 t
 
 test('首帧脚本：字体方案白名单——越界值回落默认，旧版布尔 font 映射回 auto/off', () => {
   const script = applyHost().table[0].text
-  const withFont = (font) => runFirstPaintScript(script, 'dsh-enhance-config=' + internals.serializeState({ font: font })).get('data-dsh-ux-font')
+  const withFont = (font) => runFirstPaintScript(script, 'dsh-uxexo-config=' + internals.serializeState({ font: font })).get('data-dsh-ux-font')
   // 手工构造 cookie，绕过 normalizeState 的校验（模拟被改坏/未来版本写入的值）
   const rawFont = (value) => {
     const json = encodeURIComponent(JSON.stringify({ master: true, font: value }))
-    return runFirstPaintScript(script, 'dsh-enhance-config=' + json).get('data-dsh-ux-font')
+    return runFirstPaintScript(script, 'dsh-uxexo-config=' + json).get('data-dsh-ux-font')
   }
   assert.equal(rawFont('comic-sans'), 'auto', '越界方案回落 auto')
   assert.equal(rawFont('sans-mono'), 'sans-mono')
@@ -1041,7 +1041,7 @@ test('首帧脚本：字体方案白名单——越界值回落默认，旧版�
 test('首帧脚本与客户端半的属性口径一致（同名同值）', () => {
   const script = applyHost().table[0].text
   const state = { master: true, theme: 'rose-pine-dawn', font: 'maple', fontweight: 'semibold', ink: 'deep', layout: true, fold: true, usage: false, diag: true }
-  const fromScript = runFirstPaintScript(script, 'dsh-enhance-config=' + internals.serializeState(state))
+  const fromScript = runFirstPaintScript(script, 'dsh-uxexo-config=' + internals.serializeState(state))
   const dom = createDom()
   withDom(client, dom, {}, () => internals.applyStateToDom(state))
   for (const [key, value] of fromScript) assert.equal(dom.attributes.get(key), value, key)
